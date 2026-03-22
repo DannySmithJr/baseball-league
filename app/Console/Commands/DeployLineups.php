@@ -35,11 +35,29 @@ class DeployLineups extends Command
             foreach ($dataFiles as $path) {
                 $name = basename($path);
                 try {
-                    DB::unprepared(file_get_contents($path));
+                    // Read and execute in chunks to avoid memory exhaustion
+                    $fp = fopen($path, 'r');
+                    $buffer = '';
+                    while (($line = fgets($fp)) !== false) {
+                        $trimmed = trim($line);
+                        if ($trimmed === '' || str_starts_with($trimmed, '--') || str_starts_with($trimmed, '#')) {
+                            continue;
+                        }
+                        $buffer .= $line;
+                        if (str_ends_with(rtrim($trimmed), ';')) {
+                            DB::unprepared($buffer);
+                            $buffer = '';
+                        }
+                    }
+                    fclose($fp);
                     $this->info("Imported {$name}");
                 } catch (\Throwable $e) {
                     $this->warn("Error importing {$name}: " . substr($e->getMessage(), 0, 200));
                 }
+                // Free memory between files
+                DB::connection()->disconnect();
+                DB::connection()->reconnect();
+                gc_collect_cycles();
             }
         }
 
