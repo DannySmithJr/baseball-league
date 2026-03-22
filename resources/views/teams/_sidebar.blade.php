@@ -4,7 +4,40 @@ $teamId   = $team->team_id;
 $isParent = (int)($team->parent_team_id ?? 0) === 0;
 @endphp
 
-{{-- Organization / Minor Leagues --}}
+{{-- #1 Team Info --}}
+<div class="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+    <div class="px-4 py-3 border-b border-gray-800">
+        <h2 class="font-semibold text-sm text-gray-400 uppercase tracking-wider">Team Info</h2>
+    </div>
+    <div class="p-4 space-y-2 text-sm">
+        @foreach([
+            'Ballpark'  => $team->park_name ?? null,
+            'League'    => $team->sub_league_name ?? null,
+            'Division'  => $team->division_name ?? null,
+        ] as $label => $val)
+        @if($val)
+        <div class="flex justify-between gap-2">
+            <span class="text-gray-500">{{ $label }}</span>
+            <span class="text-gray-300 text-right">{{ $val }}</span>
+        </div>
+        @endif
+        @endforeach
+        @if($record)
+        <div class="flex justify-between gap-2">
+            <span class="text-gray-500">Record</span>
+            <span class="text-gray-300">{{ $record->w }}-{{ $record->l }}</span>
+        </div>
+        @if(isset($record->streak))
+        <div class="flex justify-between gap-2">
+            <span class="text-gray-500">Streak</span>
+            <span class="text-gray-300">{{ $record->streak > 0 ? 'W'.$record->streak : ($record->streak < 0 ? 'L'.abs($record->streak) : '—') }}</span>
+        </div>
+        @endif
+        @endif
+    </div>
+</div>
+
+{{-- #2 Organization / Minor Leagues --}}
 @if($isParent && isset($affiliates) && $affiliates->isNotEmpty())
 <div class="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
     <div class="px-4 py-3 border-b border-gray-800">
@@ -66,35 +99,31 @@ $isParent = (int)($team->parent_team_id ?? 0) === 0;
 </div>
 @endif
 
-{{-- Team Info --}}
+{{-- #3 Farm System --}}
+@if(!empty($farmRank))
 <div class="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
-    <div class="px-4 py-3 border-b border-gray-800">
-        <h2 class="font-semibold text-sm text-gray-400 uppercase tracking-wider">Team Info</h2>
+    <div class="px-4 py-2.5 border-b border-gray-800">
+        <h2 class="font-bold text-sm uppercase tracking-wider text-gray-400">Farm System</h2>
     </div>
-    <div class="p-4 space-y-2 text-sm">
-        @foreach([
-            'Ballpark'  => $team->park_name ?? null,
-            'League'    => $team->sub_league_name ?? null,
-            'Division'  => $team->division_name ?? null,
-        ] as $label => $val)
-        @if($val)
-        <div class="flex justify-between gap-2">
-            <span class="text-gray-500">{{ $label }}</span>
-            <span class="text-gray-300 text-right">{{ $val }}</span>
+    <div class="p-3 space-y-1.5 text-xs">
+        <div class="flex justify-between">
+            <span class="text-gray-500">Farm Rank</span>
+            <span class="text-white font-bold text-sm">#{{ $farmRank['rank'] }}</span>
         </div>
-        @endif
-        @endforeach
-        @if($record)
-        <div class="flex justify-between gap-2">
-            <span class="text-gray-500">Record</span>
-            <span class="text-gray-300">{{ $record->w }}-{{ $record->l }}</span>
+        <div class="flex justify-between">
+            <span class="text-gray-500">Prospects</span>
+            <span class="text-gray-300">{{ $farmRank['prospect_count'] }}</span>
         </div>
-        @if(isset($record->streak))
-        <div class="flex justify-between gap-2">
-            <span class="text-gray-500">Streak</span>
-            <span class="text-gray-300">{{ $record->streak > 0 ? 'W'.$record->streak : ($record->streak < 0 ? 'L'.abs($record->streak) : '—') }}</span>
+        <div class="flex justify-between">
+            <span class="text-gray-500">Elite Prospects</span>
+            <span class="text-gray-300">{{ $farmRank['elite_count'] }}</span>
         </div>
-        @endif
+        @if($farmRank['top_prospect'])
+        <div class="flex justify-between">
+            <span class="text-gray-500">Top Prospect</span>
+            <span class="text-gray-300">{{ $farmRank['top_prospect'] }}</span>
+        </div>
         @endif
     </div>
 </div>
+@endif

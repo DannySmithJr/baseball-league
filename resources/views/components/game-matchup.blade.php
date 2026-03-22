@@ -7,6 +7,7 @@
     'homeStarter' => null,   // same
     'location'    => null,   // string or null
     'stream'      => false,  // bool — show Twitch link
+    'odds'        => null,   // ['spread', 'over_under', 'favorite', 'home_ml', 'away_ml'] or null
 ])
 
 <div class="bg-gray-900 border border-gray-800 rounded-xl p-4 hover:border-gray-700 transition flex flex-col">
@@ -56,7 +57,7 @@
         </div>
     </div>
 
-    <p class="text-xs text-gray-700 pl-[38px] mb-1.5">@</p>
+    <div class="h-1"></div>
 
     {{-- Home team row --}}
     <div class="flex items-center gap-2.5 mb-4">
@@ -109,6 +110,27 @@
         </div>
         @endforeach
     </div>
+
+    {{-- Odds: Spread & O/U --}}
+    @if($odds)
+    @php
+        $sp = $odds['spread'] ?? 0;
+        $ou = $odds['over_under'] ?? 0;
+        $fav = $odds['favorite'] ?? 'home';
+        $favAbbr = $fav === 'home' ? ($home['abbr'] ?? 'HOME') : ($away['abbr'] ?? 'AWAY');
+        $spreadStr = $sp == 0 ? 'PK' : $favAbbr . ' ' . number_format(abs($sp), 1);
+    @endphp
+    <div class="border-t border-gray-800 pt-2.5 mt-1 flex items-center justify-between text-xs">
+        <div>
+            <span class="text-gray-600 uppercase text-[10px] tracking-wider">Spread</span>
+            <span class="text-gray-300 font-semibold ml-1.5">{{ $spreadStr }}</span>
+        </div>
+        <div>
+            <span class="text-gray-600 uppercase text-[10px] tracking-wider">O/U</span>
+            <span class="text-gray-300 font-semibold ml-1.5">{{ number_format($ou, 1) }}</span>
+        </div>
+    </div>
+    @endif
 
     {{-- Location --}}
     @if($location)

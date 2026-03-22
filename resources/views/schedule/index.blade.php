@@ -218,31 +218,19 @@
 
         @else
         {{-- ── UNPLAYED CARD (shared component) ── --}}
+        @php $card = $matchupCardsByGame[$game->game_id] ?? null; @endphp
+        @if($card)
         <x-game-matchup
-            :time="$timeStr"
-            :away="[
-                'abbr'   => $game->away_abbr,
-                'name'   => $game->away_nickname,
-                'logo'   => $awayLogo,
-                'record' => $awayOvr,
-                'rpg'    => $awayRpg,
-                'avg'    => $awayBat['avg'] ?? null,
-                'hr'     => $awayBat['hr'] ?? null,
-            ]"
-            :home="[
-                'abbr'   => $game->home_abbr,
-                'name'   => $game->home_nickname,
-                'logo'   => $homeLogo,
-                'record' => $homeOvr,
-                'rpg'    => $homeRpg,
-                'avg'    => $homeBat['avg'] ?? null,
-                'hr'     => $homeBat['hr'] ?? null,
-            ]"
-            :awayStarter="$awayStarterData"
-            :homeStarter="$homeStarterData"
-            :location="implode(', ', array_filter([$game->park_name ?? null, $parkLocation ?: null]))"
-            :stream="(bool)$stream"
+            :time="$card['time']"
+            :away="$card['away']"
+            :home="$card['home']"
+            :awayStarter="$card['awayStarter']"
+            :homeStarter="$card['homeStarter']"
+            :odds="$card['odds']"
+            :location="$card['location']"
+            :stream="$card['stream']"
         />
+        @endif
         @endif
 
         @endforeach

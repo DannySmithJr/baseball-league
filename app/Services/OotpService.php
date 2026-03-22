@@ -1185,27 +1185,123 @@ class OotpService
      * Returns array keyed by game_id:
      *   ['home_ml' => '-145', 'away_ml' => '+125', 'over_under' => 9.5]
      */
+    /**
+     * Bullpen ERA per team (relief appearances only).
+     */
+    public function teamBullpenEra(): array
+    {
+        $rows = $this->safeQuery(fn () =>
+            DB::table('players_game_pitching_stats as pgp')
+                ->join('games as g', 'g.game_id', '=', 'pgp.game_id')
+                ->where('g.played', 1)->where('pgp.gs', 0)
+                ->groupBy('pgp.team_id')
+                ->selectRaw('pgp.team_id, SUM(pgp.outs) as outs, SUM(pgp.er) as er')
+                ->get()
+        ) ?? collect();
+
+        $result = [];
+        foreach ($rows as $r) {
+            $ip = (int)$r->outs / 3;
+            $result[(int)$r->team_id] = $ip > 0 ? round((int)$r->er * 9 / $ip, 2) : 4.50;
+        }
+        return $result;
+    }
+
+    /**
+     * Average OPS for each team's starting lineup vs the specified handedness.
+     * Input: [team_id => 'rhp'|'lhp']
+     */
+    public function lineupOpsVsHand(array $teamHandMap): array
+    {
+        if (empty($teamHandMap)) return [];
+
+        // Collect all lineup player IDs
+        $lineupPlayers = []; // team_id => [player_ids]
+        foreach ($teamHandMap as $teamId => $vs) {
+            $players = DB::table('team_starting_lineups')
+                ->where('team_id', $teamId)->where('vs', $vs)
+                ->pluck('player_id')->toArray();
+            if (!empty($players)) $lineupPlayers[$teamId] = $players;
+        }
+
+        if (empty($lineupPlayers)) return [];
+
+        // All player IDs flat
+        $allIds = array_values(array_unique(array_merge(...array_values($lineupPlayers))));
+
+        // Get season batting stats for all these players
+        $stats = DB::table('players_game_batting as pgb')
+            ->join('games as g', 'g.game_id', '=', 'pgb.game_id')
+            ->where('g.played', 1)
+            ->whereIn('pgb.player_id', $allIds)
+            ->groupBy('pgb.player_id')
+            ->selectRaw('pgb.player_id, SUM(pgb.ab) as ab, SUM(pgb.h) as h,
+                SUM(pgb.d) as d, SUM(pgb.t) as t, SUM(pgb.hr) as hr,
+                SUM(pgb.bb) as bb, SUM(pgb.hp) as hp, SUM(pgb.sf) as sf,
+                SUM(pgb.pa) as pa')
+            ->get()->keyBy('player_id');
+
+        $result = [];
+        foreach ($lineupPlayers as $teamId => $playerIds) {
+            $opsSum = 0; $count = 0;
+            foreach ($playerIds as $pid) {
+                $s = $stats[$pid] ?? null;
+                if (!$s || (int)$s->ab < 1) continue;
+                $ab = (int)$s->ab; $h = (int)$s->h; $bb = (int)$s->bb;
+                $hp = (int)$s->hp; $sf = (int)$s->sf; $pa = (int)$s->pa ?: 1;
+                $tb = $h + (int)$s->d + 2*(int)$s->t + 3*(int)$s->hr;
+                $obp = ($h + $bb + $hp) / $pa;
+                $slg = $tb / $ab;
+                $opsSum += $obp + $slg;
+                $count++;
+            }
+            $result[$teamId] = $count > 0 ? $opsSum / $count : 0.720;
+        }
+        return $result;
+    }
+
+    /**
+     * Get throwing hand for player IDs.
+     */
+    public function playerThrows(array $playerIds): array
+    {
+        if (empty($playerIds)) return [];
+        $rows = DB::table('players')->whereIn('player_id', $playerIds)
+            ->select('player_id', 'throws')->get();
+        $result = [];
+        foreach ($rows as $r) {
+            $result[(int)$r->player_id] = match((int)$r->throws) { 1 => 'R', 2 => 'L', default => 'R' };
+        }
+        return $result;
+    }
+
+    /**
+     * Compute game odds: moneyline, spread, over/under.
+     */
     public function computeGameOdds(
         \Illuminate\Support\Collection $games,
         array $homeAwayRecs,
         array $starterStats,
         array $recentRecs,
-        array $runsPerGame
+        array $runsPerGame,
+        array $bullpenEra = [],
+        array $lineupOps = [],
+        array $starterHands = []
     ): array {
-        $avgEra = 4.00;
-        $avgRpg = 4.50;
-        $result = [];
+        $leagueEra = 4.20;
+        $leagueOps = 0.720;
+        $avgRpg    = 4.50;
+        $result    = [];
 
         foreach ($games as $g) {
             if ((int)$g->played) continue;
 
-            $homeRec   = $homeAwayRecs[(int)$g->home_team] ?? [];
-            $awayRec   = $homeAwayRecs[(int)$g->away_team] ?? [];
+            $homeRec = $homeAwayRecs[(int)$g->home_team] ?? [];
+            $awayRec = $homeAwayRecs[(int)$g->away_team] ?? [];
 
             // ── Moneyline ──────────────────────────────────────────────────
-            $homeProb = 0.54; // home-field baseline
+            $homeProb = 0.54;
 
-            // Overall win%
             $hw = ($homeRec['home_w'] ?? 0) + ($homeRec['road_w'] ?? 0);
             $hl = ($homeRec['home_l'] ?? 0) + ($homeRec['road_l'] ?? 0);
             $aw = ($awayRec['home_w'] ?? 0) + ($awayRec['road_w'] ?? 0);
@@ -1214,15 +1310,13 @@ class OotpService
             $awayWpct = ($aw + $al) > 0 ? $aw / ($aw + $al) : 0.500;
             $homeProb += ($homeWpct - $awayWpct) * 0.25;
 
-            // Home/Away splits
             $hhg = ($homeRec['home_w'] ?? 0) + ($homeRec['home_l'] ?? 0);
             $arg = ($awayRec['road_w'] ?? 0) + ($awayRec['road_l'] ?? 0);
             $homeHomeWpct = $hhg > 0 ? ($homeRec['home_w'] ?? 0) / $hhg : 0.500;
-            $awayRoadWpct = $arg > 0 ? ($awayRec['road_w'] ?? 0) / $arg  : 0.500;
+            $awayRoadWpct = $arg > 0 ? ($awayRec['road_w'] ?? 0) / $arg : 0.500;
             $homeProb += ($homeHomeWpct - 0.5) * 0.15;
             $homeProb -= ($awayRoadWpct - 0.5) * 0.15;
 
-            // Recent form (last 10)
             $hr = $recentRecs[(int)$g->home_team] ?? null;
             $ar = $recentRecs[(int)$g->away_team] ?? null;
             if ($hr && ($hr['w'] + $hr['l']) > 0) {
@@ -1232,21 +1326,22 @@ class OotpService
                 $homeProb -= ($ar['w'] / ($ar['w'] + $ar['l']) - 0.5) * 0.10;
             }
 
-            // Pitcher ERA differential
+            // Starter stats
             $s1 = isset($g->starter1, $starterStats[(int)$g->starter1]) ? $starterStats[(int)$g->starter1] : null;
             $s0 = isset($g->starter0, $starterStats[(int)$g->starter0]) ? $starterStats[(int)$g->starter0] : null;
-            $homeEra = ($s1 && is_numeric($s1['era'])) ? (float)$s1['era'] : $avgEra;
-            $awayEra = ($s0 && is_numeric($s0['era'])) ? (float)$s0['era'] : $avgEra;
+            $homeEra  = ($s1 && is_numeric($s1['era']))  ? (float)$s1['era']  : $leagueEra;
+            $awayEra  = ($s0 && is_numeric($s0['era']))  ? (float)$s0['era']  : $leagueEra;
+            $homeWhip = ($s1 && is_numeric($s1['whip'])) ? (float)$s1['whip'] : 1.30;
+            $awayWhip = ($s0 && is_numeric($s0['whip'])) ? (float)$s0['whip'] : 1.30;
             $homeProb += ($awayEra - $homeEra) * 0.025;
-
             $homeProb = max(0.20, min(0.80, $homeProb));
 
-            // American odds (rounded to nearest 5)
+            // American odds
             if ($homeProb >= 0.50) {
                 $homeRaw = -($homeProb / (1 - $homeProb)) * 100;
-                $awayRaw =  ((1 - $homeProb) / $homeProb) * 100;
+                $awayRaw = ((1 - $homeProb) / $homeProb) * 100;
             } else {
-                $homeRaw =  ((1 - $homeProb) / $homeProb) * 100;
+                $homeRaw = ((1 - $homeProb) / $homeProb) * 100;
                 $awayRaw = -($homeProb / (1 - $homeProb)) * 100;
             }
             $homeML = (int)(round($homeRaw / 5) * 5);
@@ -1254,32 +1349,442 @@ class OotpService
             $homeMLStr = $homeML > 0 ? '+' . $homeML : (string)$homeML;
             $awayMLStr = $awayML > 0 ? '+' . $awayML : (string)$awayML;
 
-            // ── Over/Under ─────────────────────────────────────────────────
+            // ── Expected Runs Per Team ─────────────────────────────────────
             $homeRpg = $runsPerGame[(int)$g->home_team]['rpg'] ?? $avgRpg;
             $awayRpg = $runsPerGame[(int)$g->away_team]['rpg'] ?? $avgRpg;
 
-            // Starter expected runs in ~6 IP
-            $homeStarterRuns = $homeEra * (6 / 9);
-            $awayStarterRuns = $awayEra * (6 / 9);
+            // Starter factors (67% of game)
+            $homeStarterFactor = $homeEra / $leagueEra;
+            $awayStarterFactor = $awayEra / $leagueEra;
+            $homeWhipFactor = 1 + ($homeWhip - 1.30) * 0.15;
+            $awayWhipFactor = 1 + ($awayWhip - 1.30) * 0.15;
 
-            // Bullpen: ~3 IP each side at league avg ERA
-            $bullpenRuns = 2 * (4.50 * 3 / 9);
+            $awayVsStarter = $awayRpg * $homeStarterFactor * $homeWhipFactor * 0.67;
+            $homeVsStarter = $homeRpg * $awayStarterFactor * $awayWhipFactor * 0.67;
 
-            // Offense adjustment vs league average
-            $offenseFactor = (($homeRpg + $awayRpg) / 2 - $avgRpg) * 0.60;
+            // Bullpen factors (33% of game)
+            $homeBpEra = $bullpenEra[(int)$g->home_team] ?? 4.50;
+            $awayBpEra = $bullpenEra[(int)$g->away_team] ?? 4.50;
+            $awayVsBullpen = $awayRpg * ($homeBpEra / $leagueEra) * 0.33;
+            $homeVsBullpen = $homeRpg * ($awayBpEra / $leagueEra) * 0.33;
 
-            $total = $homeStarterRuns + $awayStarterRuns + $bullpenRuns + $offenseFactor;
-            $total = max(5.5, min(14.0, $total));
-            $total = round($total * 2) / 2;
+            // Lineup vs handedness adjustment
+            $awayLineupOps = $lineupOps[(int)$g->away_team] ?? $leagueOps;
+            $homeLineupOps = $lineupOps[(int)$g->home_team] ?? $leagueOps;
+            $awayLineupMult = 1 + ($awayLineupOps - $leagueOps) * 1.5;
+            $homeLineupMult = 1 + ($homeLineupOps - $leagueOps) * 1.5;
+
+            // Combine
+            $awayExpected = ($awayVsStarter + $awayVsBullpen) * $awayLineupMult;
+            $homeExpected = ($homeVsStarter + $homeVsBullpen) * $homeLineupMult + 0.25;
+
+            $awayExpected = max(2.0, min(8.0, $awayExpected));
+            $homeExpected = max(2.0, min(8.0, $homeExpected));
+
+            // ── Spread & Over/Under ────────────────────────────────────────
+            $spread    = round(($homeExpected - $awayExpected) * 2) / 2;
+            $overUnder = round(($homeExpected + $awayExpected) * 2) / 2;
+            $overUnder = max(5.5, min(14.0, $overUnder));
+            $favorite  = $spread > 0 ? 'home' : ($spread < 0 ? 'away' : 'home');
 
             $result[(int)$g->game_id] = [
                 'home_ml'    => $homeMLStr,
                 'away_ml'    => $awayMLStr,
-                'over_under' => $total,
+                'over_under' => $overUnder,
+                'spread'     => $spread,
+                'favorite'   => $favorite,
             ];
         }
 
         return $result;
+    }
+
+    // -------------------------------------------------------------------------
+    // Matchup Card Builder
+    // -------------------------------------------------------------------------
+
+    /**
+     * Build matchup card data for unplayed games, ready for the x-game-matchup component.
+     * Each card contains: away, home, awayStarter, homeStarter, odds, location, time, date, game object.
+     */
+    public function buildMatchupCards(
+        \Illuminate\Support\Collection $games,
+        array $starterStats,
+        array $homeAwayRecs,
+        array $teamLogos,
+        array $teamBatting,
+        array $runsPerGame,
+        array $gameOdds,
+        array $teamTzOffsets = [],
+        array $gameStreams = []
+    ): array {
+        $cards = [];
+        foreach ($games as $game) {
+            if ((int)$game->played === 1) continue;
+
+            $awayRec = $homeAwayRecs[(int)$game->away_team] ?? null;
+            $homeRec = $homeAwayRecs[(int)$game->home_team] ?? null;
+            $s0 = ((int)($game->starter0 ?? 0) > 0) ? ($starterStats[(int)$game->starter0] ?? null) : null;
+            $s1 = ((int)($game->starter1 ?? 0) > 0) ? ($starterStats[(int)$game->starter1] ?? null) : null;
+
+            // Time string
+            $etOffset = $teamTzOffsets[(int)$game->home_team] ?? 0;
+            if ($game->time) {
+                $lh = intdiv((int)$game->time, 100) + $etOffset;
+                $lm = (int)$game->time % 100;
+                $ampm = $lh >= 12 ? 'PM' : 'AM';
+                $h12 = $lh % 12 ?: 12;
+                $timeStr = sprintf('%d:%02d %s ET', $h12, $lm, $ampm);
+            } else {
+                $timeStr = 'TBD';
+            }
+
+            $awayOvr = $awayRec ? ($awayRec['road_w']+$awayRec['home_w']).'-'.($awayRec['road_l']+$awayRec['home_l']) : null;
+            $homeOvr = $homeRec ? ($homeRec['home_w']+$homeRec['road_w']).'-'.($homeRec['home_l']+$homeRec['road_l']) : null;
+            $parkLocation = implode(', ', array_filter([$game->park_city ?? null, $game->park_state ?? null]));
+
+            $awayBat = $teamBatting[(int)$game->away_team] ?? null;
+            $homeBat = $teamBatting[(int)$game->home_team] ?? null;
+
+            $cards[] = [
+                'game_id' => (int)$game->game_id,
+                'date'    => $game->date,
+                'time'    => $timeStr,
+                'away' => [
+                    'abbr'   => $game->away_abbr ?? '',
+                    'name'   => $game->away_nickname ?? $game->away_name ?? '',
+                    'logo'   => $teamLogos[(int)$game->away_team] ?? null,
+                    'record' => $awayOvr,
+                    'rpg'    => $runsPerGame[(int)$game->away_team]['rpg'] ?? null,
+                    'avg'    => $awayBat['avg'] ?? null,
+                    'hr'     => $awayBat['hr'] ?? null,
+                ],
+                'home' => [
+                    'abbr'   => $game->home_abbr ?? '',
+                    'name'   => $game->home_nickname ?? $game->home_name ?? '',
+                    'logo'   => $teamLogos[(int)$game->home_team] ?? null,
+                    'record' => $homeOvr,
+                    'rpg'    => $runsPerGame[(int)$game->home_team]['rpg'] ?? null,
+                    'avg'    => $homeBat['avg'] ?? null,
+                    'hr'     => $homeBat['hr'] ?? null,
+                ],
+                'awayStarter' => $game->starter0_name
+                    ? ['name' => $game->starter0_name, 'w' => $s0['w'] ?? 0, 'l' => $s0['l'] ?? 0, 'era' => $s0['era'] ?? '-.--', 'k' => $s0['k'] ?? 0]
+                    : null,
+                'homeStarter' => $game->starter1_name
+                    ? ['name' => $game->starter1_name, 'w' => $s1['w'] ?? 0, 'l' => $s1['l'] ?? 0, 'era' => $s1['era'] ?? '-.--', 'k' => $s1['k'] ?? 0]
+                    : null,
+                'odds'     => $gameOdds[(int)$game->game_id] ?? null,
+                'location' => implode(', ', array_filter([$game->park_name ?? null, $parkLocation ?: null])),
+                'stream'   => (bool)($gameStreams[(int)$game->game_id] ?? null),
+                'game'     => $game,
+            ];
+        }
+        return $cards;
+    }
+
+    // -------------------------------------------------------------------------
+    // Featured Matchups (preview page)
+    // -------------------------------------------------------------------------
+
+    /**
+     * Build the top featured matchups for the next 7 days.
+     * Returns an array of matchup data sorted by interest score, limited to $limit.
+     */
+    public function featuredMatchups(int $limit = 12): array
+    {
+        // ── Date range ──────────────────────────────────────────────────
+        $firstUpcoming = DB::table('games')->where('played', 0)->orderBy('date')->value('date');
+        if (!$firstUpcoming) return [];
+        $lastUpcoming = date('Y-m-d', strtotime($firstUpcoming . ' +6 days'));
+        $lastPlayed   = DB::table('games')->where('played', 1)->orderByDesc('date')->value('date');
+
+        // ── Team data (records, batting, pitching, parks) ───────────────
+        $teamLogos = DB::table('teams')->whereNotNull('logo_file_name')
+            ->pluck('logo_file_name', 'team_id')->map(fn($f) => $f ?: null)->toArray();
+        $seasonYear = $this->seasonYear() ?? (int)date('Y', strtotime($firstUpcoming));
+
+        $teamRows = DB::table('teams as tm')
+            ->leftJoin('parks as pk', 'pk.park_id', '=', 'tm.park_id')
+            ->leftJoin('cities as ct', 'ct.city_id', '=', 'tm.city_id')
+            ->leftJoin('states as st', 'st.state_id', '=', 'ct.state_id')
+            ->where('tm.level', 1)
+            ->get(['tm.team_id','tm.name','tm.nickname','tm.abbr','tm.division_id','tm.sub_league_id',
+                   'tm.background_color_id','tm.text_color_id',
+                   'pk.name as park_name','ct.name as park_city','st.name as park_state']);
+
+        $wlRows = DB::select("
+            SELECT team_id, SUM(CASE WHEN won=1 THEN 1 ELSE 0 END) as w, SUM(CASE WHEN won=0 THEN 1 ELSE 0 END) as l
+            FROM (
+                SELECT away_team AS team_id, IF(runs0>runs1,1,0) AS won FROM games WHERE played=1 AND game_type=0
+                UNION ALL
+                SELECT home_team AS team_id, IF(runs1>runs0,1,0) AS won FROM games WHERE played=1 AND game_type=0
+            ) t GROUP BY team_id
+        ");
+        $wlByTeam = [];
+        foreach ($wlRows as $r) $wlByTeam[(int)$r->team_id] = ['w' => (int)$r->w, 'l' => (int)$r->l];
+
+        $rpgRows = DB::select("
+            SELECT team_id, SUM(rf) as rf, SUM(g) as g FROM (
+                SELECT away_team AS team_id, SUM(runs0) AS rf, COUNT(*) AS g FROM games WHERE played=1 AND game_type=0 GROUP BY away_team
+                UNION ALL
+                SELECT home_team AS team_id, SUM(runs1) AS rf, COUNT(*) AS g FROM games WHERE played=1 AND game_type=0 GROUP BY home_team
+            ) t GROUP BY team_id
+        ");
+        $rpgByTeam = [];
+        foreach ($rpgRows as $r) {
+            $g = (int)$r->g;
+            $rpgByTeam[(int)$r->team_id] = $g > 0 ? round((float)$r->rf / $g, 1) : 0.0;
+        }
+
+        $teamBatting = DB::table('players_game_batting as pgb')
+            ->join('games as g', 'g.game_id', '=', 'pgb.game_id')
+            ->where('g.played', 1)->where('pgb.level_id', 1)
+            ->groupBy('pgb.team_id')
+            ->selectRaw('pgb.team_id, SUM(pgb.h) as h, SUM(pgb.ab) as ab, SUM(pgb.hr) as hr')
+            ->get()->keyBy('team_id');
+
+        $teams = [];
+        foreach ($teamRows as $t) {
+            $tid = (int)$t->team_id;
+            $wl  = $wlByTeam[$tid] ?? ['w' => 0, 'l' => 0];
+            $w = $wl['w']; $l = $wl['l'];
+            $bat = $teamBatting[$tid] ?? null;
+            $logoBase = pathinfo($teamLogos[$tid] ?? '', PATHINFO_FILENAME);
+            $teams[$tid] = [
+                'name' => $t->name, 'nickname' => $t->nickname, 'abbr' => $t->abbr,
+                'w' => $w, 'l' => $l, 'pct' => ($w+$l) > 0 ? $w/($w+$l) : 0,
+                'division_id' => (int)$t->division_id,
+                'bgColor' => $t->background_color_id ?? '#1f2937',
+                'logo' => self::logoForYear($logoBase, $seasonYear),
+                'rpg' => $rpgByTeam[$tid] ?? 0.0,
+                'teamAvg' => ($bat && $bat->ab > 0) ? $bat->h / $bat->ab : 0.0,
+                'teamHr' => $bat ? (int)$bat->hr : 0,
+                'park_name' => $t->park_name, 'park_city' => $t->park_city, 'park_state' => $t->park_state,
+            ];
+        }
+
+        // ── Upcoming games ──────────────────────────────────────────────
+        $upcomingGames = DB::table('games as g')
+            ->where('g.played', 0)->whereBetween('g.date', [$firstUpcoming, $lastUpcoming])
+            ->select('g.game_id','g.date','g.time','g.away_team','g.home_team')
+            ->orderBy('g.date')->orderBy('g.time')->get()
+            ->map(fn($g) => (object)((array)$g + ['starter0'=>0,'starter1'=>0,'starter0_name'=>null,'starter1_name'=>null]));
+
+        // ── Rotation cycling ────────────────────────────────────────────
+        $rotationRows = DB::table('players_game_pitching_stats as pgp')
+            ->join('games as g', 'g.game_id', '=', 'pgp.game_id')
+            ->join('players as p', 'p.player_id', '=', 'pgp.player_id')
+            ->where('g.played', 1)->where('pgp.gs', 1)->where('pgp.level_id', 1)
+            ->groupBy('pgp.player_id', 'pgp.team_id', 'p.first_name', 'p.last_name')
+            ->selectRaw("pgp.player_id, pgp.team_id, CONCAT(LEFT(p.first_name,1),'. ',p.last_name) as name, MAX(g.date) as last_start")
+            ->get();
+
+        $teamRotation = [];
+        foreach ($rotationRows->groupBy('team_id') as $tid => $pitchers) {
+            $teamRotation[(int)$tid] = $pitchers->sortBy('last_start')->values()
+                ->map(fn($r) => ['player_id' => (int)$r->player_id, 'name' => $r->name])->toArray();
+        }
+
+        $projected = DB::table('projected_starting_pitchers')->get()->keyBy('team_id');
+        $rotationPos = [];
+        foreach ($teamRotation as $tid => $rotation) {
+            $nextPid = isset($projected[$tid]) ? (int)$projected[$tid]->starter_0 : null;
+            $pos = 0;
+            if ($nextPid) {
+                foreach ($rotation as $i => $sp) {
+                    if ($sp['player_id'] === $nextPid) { $pos = $i; break; }
+                }
+            }
+            $rotationPos[$tid] = $pos;
+        }
+
+        foreach ($upcomingGames as $g) {
+            foreach ([(int)$g->away_team => ['starter0','starter0_name'], (int)$g->home_team => ['starter1','starter1_name']] as $tid => [$spF, $nF]) {
+                if (empty($teamRotation[$tid])) continue;
+                $rot = $teamRotation[$tid]; $pos = $rotationPos[$tid] ?? 0;
+                $sp = $rot[$pos % count($rot)];
+                $g->$spF = $sp['player_id']; $g->$nF = $sp['name'];
+                $rotationPos[$tid] = ($pos + 1) % count($rot);
+            }
+        }
+
+        // ── Starter stats ───────────────────────────────────────────────
+        $starterIds = array_values(array_unique(array_filter(array_merge(
+            $upcomingGames->pluck('starter0')->toArray(), $upcomingGames->pluck('starter1')->toArray()
+        ), fn($v) => (int)$v > 0)));
+
+        $starterStats = [];
+        if ($starterIds) {
+            $spRows = DB::table('players_game_pitching_stats as pgp')
+                ->join('games as g', 'g.game_id', '=', 'pgp.game_id')
+                ->whereIn('pgp.player_id', $starterIds)->where('g.played', 1)->where('pgp.level_id', 1)
+                ->groupBy('pgp.player_id')
+                ->selectRaw('pgp.player_id, SUM(pgp.w) as w, SUM(pgp.l) as l, SUM(pgp.k) as k, SUM(pgp.outs) as outs, SUM(pgp.er) as er, SUM(pgp.ha) as ha, SUM(pgp.bb) as bb')
+                ->get();
+            foreach ($spRows as $r) {
+                $ip = $r->outs / 3;
+                $starterStats[(int)$r->player_id] = [
+                    'w' => (int)$r->w, 'l' => (int)$r->l, 'k' => (int)$r->k,
+                    'era' => $ip > 0 ? number_format(($r->er / $ip) * 9, 2) : '-.--',
+                    'whip' => $ip > 0 ? number_format(($r->ha + $r->bb) / $ip, 2) : '-.--',
+                ];
+            }
+        }
+
+        // ── Odds data ───────────────────────────────────────────────────
+        $bullpenEra   = $this->teamBullpenEra();
+        $starterHands = $this->playerThrows($starterIds);
+        $lineupHandMap = [];
+        foreach ($upcomingGames as $g) {
+            $lineupHandMap[(int)$g->away_team] = ($starterHands[(int)($g->starter1 ?? 0)] ?? 'R') === 'R' ? 'rhp' : 'lhp';
+            $lineupHandMap[(int)$g->home_team] = ($starterHands[(int)($g->starter0 ?? 0)] ?? 'R') === 'R' ? 'rhp' : 'lhp';
+        }
+        $lineupOps = $this->lineupOpsVsHand($lineupHandMap);
+
+        // ── Win streaks ─────────────────────────────────────────────────
+        $recentGamesAll = DB::select("
+            SELECT team_id, away_team, home_team, runs0, runs1 FROM (
+                SELECT away_team AS team_id, away_team, home_team, runs0, runs1, date, game_id FROM games WHERE played=1 AND game_type=0
+                UNION ALL
+                SELECT home_team AS team_id, away_team, home_team, runs0, runs1, date, game_id FROM games WHERE played=1 AND game_type=0
+            ) t ORDER BY team_id, date DESC, game_id DESC
+        ");
+        $winStreakByTeam = []; $teamBuf = [];
+        foreach ($recentGamesAll as $rg) {
+            $tid = (int)$rg->team_id;
+            if (isset($winStreakByTeam[$tid])) continue;
+            $won = ((int)$rg->away_team === $tid && $rg->runs0 > $rg->runs1) || ((int)$rg->home_team === $tid && $rg->runs1 > $rg->runs0);
+            $type = $won ? 'W' : 'L';
+            if (!isset($teamBuf[$tid])) { $teamBuf[$tid] = ['type' => $type, 'streak' => 1]; }
+            elseif ($type === $teamBuf[$tid]['type']) { $teamBuf[$tid]['streak']++; }
+            else { $winStreakByTeam[$tid] = $teamBuf[$tid]['type'] === 'W' ? $teamBuf[$tid]['streak'] : -$teamBuf[$tid]['streak']; }
+        }
+        foreach ($teamBuf as $tid => $s) { $winStreakByTeam[$tid] ??= ($s['type'] === 'W' ? $s['streak'] : -$s['streak']); }
+
+        // ── Hitting streaks, stars, rivalries ────────────────────────────
+        $streaksByTeam = [];
+        $allStreakRows = DB::table('players_streak as ps')
+            ->join('players as p', 'p.player_id', '=', 'ps.player_id')
+            ->join('team_roster as tr', 'tr.player_id', '=', 'p.player_id')
+            ->join('teams as t', 't.team_id', '=', 'tr.team_id')
+            ->where('ps.streak_id', 9)->where('ps.has_ended', 0)->where('ps.value', '>=', 8)->where('t.level', 1)
+            ->orderByDesc('ps.value')->get(['p.player_id','p.first_name','p.last_name','tr.team_id','ps.value'])->unique('player_id');
+        foreach ($allStreakRows as $sr) {
+            $streaksByTeam[(int)$sr->team_id][] = ['name' => $sr->first_name.' '.$sr->last_name, 'value' => (int)$sr->value];
+        }
+
+        $seasonStats = DB::table('players_career_batting_stats as pcs')
+            ->join('players as p', 'p.player_id', '=', 'pcs.player_id')
+            ->join('team_roster as tr', 'tr.player_id', '=', 'p.player_id')
+            ->join('teams as t', 't.team_id', '=', 'tr.team_id')
+            ->where('pcs.split_id', 1)->where('pcs.year', $seasonYear)->where('t.level', 1)->where('pcs.ab', '>=', 100)
+            ->get(['p.player_id','p.first_name','p.last_name','tr.team_id','pcs.hr','pcs.rbi'])->unique('player_id');
+
+        $hrRanks  = $seasonStats->sortByDesc('hr')->values()->take(5)->pluck('player_id')->flip()->toArray();
+        $rbiRanks = $seasonStats->sortByDesc('rbi')->values()->take(5)->pluck('player_id')->flip()->toArray();
+        $starsByTeam = [];
+        foreach ($seasonStats as $s) {
+            $labels = [];
+            if (isset($hrRanks[$s->player_id]))  $labels[] = 'Top-5 HR ('.$s->hr.')';
+            if (isset($rbiRanks[$s->player_id])) $labels[] = 'Top-5 RBI ('.$s->rbi.')';
+            if ($labels) $starsByTeam[(int)$s->team_id][] = ['name' => $s->first_name.' '.$s->last_name, 'labels' => $labels];
+        }
+
+        $rivalryPairs = [];
+        foreach (DB::table('rivalries')->where('approved', true)->get() as $rv) {
+            $key = min((int)$rv->team0_id, (int)$rv->team1_id).'-'.max((int)$rv->team0_id, (int)$rv->team1_id);
+            $rivalryPairs[$key] = true;
+        }
+
+        // ── Enrich game objects with team fields for buildMatchupCards ──
+        foreach ($upcomingGames as $g) {
+            $a = $teams[(int)$g->away_team] ?? []; $h = $teams[(int)$g->home_team] ?? [];
+            $g->away_abbr = $a['abbr'] ?? ''; $g->away_name = $a['name'] ?? ''; $g->away_nickname = $a['nickname'] ?? '';
+            $g->home_abbr = $h['abbr'] ?? ''; $g->home_name = $h['name'] ?? ''; $g->home_nickname = $h['nickname'] ?? '';
+            $g->park_name = $h['park_name'] ?? null; $g->park_city = $h['park_city'] ?? null; $g->park_state = $h['park_state'] ?? null;
+            $g->played = 0;
+        }
+
+        // Build team logos map
+        $teamLogoMap = [];
+        foreach ($teams as $tid => $t) $teamLogoMap[$tid] = $t['logo'] ?? null;
+
+        // Build home/away records from W/L
+        $homeAwayRecs = [];
+        foreach ($teams as $tid => $t) {
+            $homeAwayRecs[$tid] = ['home_w' => $t['w'], 'home_l' => $t['l'], 'road_w' => $t['w'], 'road_l' => $t['l']];
+        }
+        // Use actual home/away if available
+        $realHARecs = $this->teamHomeAwayRecords();
+        foreach ($realHARecs as $tid => $rec) $homeAwayRecs[$tid] = $rec;
+
+        $rpg = []; foreach ($teams as $tid => $t) $rpg[$tid] = ['rpg' => $t['rpg']];
+        $bat = []; foreach ($teams as $tid => $t) $bat[$tid] = ['avg' => $t['teamAvg'], 'hr' => $t['teamHr']];
+
+        // Compute odds
+        $gameOdds = $this->computeGameOdds($upcomingGames, $homeAwayRecs, $starterStats, $this->teamRecentRecords(10), $rpg, $bullpenEra, $lineupOps, $starterHands);
+
+        // Build cards using shared method
+        $cards = $this->buildMatchupCards($upcomingGames, $starterStats, $homeAwayRecs, $teamLogoMap, $bat, $rpg, $gameOdds);
+
+        // ── Score each card for ranking ──────────────────────────────────
+        $maxWins = max(array_column($teams, 'w')) * 2 ?: 1;
+
+        foreach ($cards as &$card) {
+            $awayId = (int)$card['game']->away_team; $homeId = (int)$card['game']->home_team;
+            $away = $teams[$awayId] ?? null; $home = $teams[$homeId] ?? null;
+            if (!$away || !$home) { $card['score'] = 0; continue; }
+
+            $pctDiff   = abs($away['pct'] - $home['pct']);
+            $closeness = max(0, 1 - ($pctDiff * 4));
+            $quality   = ($away['w'] + $home['w']) / $maxWins;
+
+            $starScore = 0;
+            foreach ([$awayId, $homeId] as $tid) foreach ($starsByTeam[$tid] ?? [] as $_) $starScore += 0.4;
+            $starScore = min(1, $starScore);
+
+            $streakScore = 0;
+            foreach ([$awayId, $homeId] as $tid) foreach ($streaksByTeam[$tid] ?? [] as $str) $streakScore += min(1, $str['value']/30) * 0.5;
+            $streakScore = min(1, $streakScore);
+
+            $awayMom = $winStreakByTeam[$awayId] ?? 0; $homeMom = $winStreakByTeam[$homeId] ?? 0;
+            $momentum = (($awayMom > 0 && $homeMom < 0) || ($awayMom < 0 && $homeMom > 0)) ? min(1, (abs($awayMom)+abs($homeMom))/10) : 0;
+
+            $pitchScore = 0.5;
+            $eraVals = array_filter([
+                isset($card['awayStarter']['era']) && is_numeric($card['awayStarter']['era']) ? (float)$card['awayStarter']['era'] : null,
+                isset($card['homeStarter']['era']) && is_numeric($card['homeStarter']['era']) ? (float)$card['homeStarter']['era'] : null,
+            ], fn($v) => $v !== null);
+            if ($eraVals) $pitchScore = max(0, min(1, (5.5 - array_sum($eraVals)/count($eraVals)) / 4.0));
+
+            $rivalryKey = min($awayId,$homeId).'-'.max($awayId,$homeId);
+            $isRivalry  = isset($rivalryPairs[$rivalryKey]);
+
+            $card['score'] = ($closeness*0.25) + ($quality*0.20) + ($pitchScore*0.15) + (($isRivalry?1:0)*0.15) + ($starScore*0.10) + ($streakScore*0.10) + ($momentum*0.05);
+
+            // Tags
+            $tags = [];
+            if ($isRivalry) $tags[] = ['type'=>'rivalry','text'=>'Rivalry'];
+            if ($pctDiff <= 0.05) $tags[] = ['type'=>'matchup','text'=>'Even matchup'];
+            if ($away['pct'] >= 0.580 && $home['pct'] >= 0.580) $tags[] = ['type'=>'elite','text'=>'Elite vs Elite'];
+            if ($away['division_id'] === $home['division_id']) $tags[] = ['type'=>'div','text'=>'Division game'];
+            foreach ([$awayId,$homeId] as $tid) {
+                foreach ($streaksByTeam[$tid] ?? [] as $str) if ($str['value'] >= 15) $tags[] = ['type'=>'streak','text'=>$str['name'].' — '.$str['value'].'-game hit streak'];
+                foreach ($starsByTeam[$tid] ?? [] as $star) $tags[] = ['type'=>'star','text'=>$star['name'].' — '.implode(', ',$star['labels'])];
+            }
+            if (abs($awayMom) >= 3) $tags[] = ['type'=>'momentum','text'=>$away['abbr'].' '.($awayMom>0?'W':'L').abs($awayMom)];
+            if (abs($homeMom) >= 3) $tags[] = ['type'=>'momentum','text'=>$home['abbr'].' '.($homeMom>0?'W':'L').abs($homeMom)];
+            $card['tags'] = $tags;
+
+            // Add momentum to away/home for component
+            $card['away']['momentum'] = $awayMom;
+            $card['home']['momentum'] = $homeMom;
+        }
+        unset($card);
+
+        usort($cards, fn($a, $b) => ($b['score'] ?? 0) <=> ($a['score'] ?? 0));
+        return array_slice($cards, 0, $limit);
     }
 
     // -------------------------------------------------------------------------
@@ -2717,8 +3222,8 @@ class OotpService
 
         $isMlb = (int)$myTeam->level === 1;
         if ($isMlb) {
-            $mySlId = $subLeagueId ?: (int)$myTeam->sub_league_id;
-            if (!$mySlId) return [];
+            $mySlId = $subLeagueId !== 0 && $subLeagueId ? $subLeagueId : (int)$myTeam->sub_league_id;
+            if ($mySlId === null) return [];
             $lgAbbr = $this->safeQuery(fn () =>
                 DB::table('sub_leagues')->where('sub_league_id', $mySlId)->value('abbr')
             ) ?? 'LG';
@@ -2817,8 +3322,8 @@ class OotpService
 
         $isMlb = (int)$myTeam->level === 1;
         if ($isMlb) {
-            $mySlId = $subLeagueId ?: (int)$myTeam->sub_league_id;
-            if (!$mySlId) return [];
+            $mySlId = $subLeagueId !== 0 && $subLeagueId ? $subLeagueId : (int)$myTeam->sub_league_id;
+            if ($mySlId === null) return [];
             $slAbbr = $this->safeQuery(fn () =>
                 DB::table('sub_leagues')->where('sub_league_id', $mySlId)->value('abbr')
             ) ?? 'LG';

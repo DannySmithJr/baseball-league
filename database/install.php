@@ -1,4 +1,6 @@
 <?php
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
 /**
  * sMLB Standalone Database Installer — Browser Based
  *
@@ -9,10 +11,10 @@
  */
 
 define('INSTALL_KEY', 'smlb2026install');
-define('LARAVEL_ROOT', '/home/smlbemgt/baseball-league');
+define('LARAVEL_ROOT', '/home/forge/smlb.one/current');
 define('ENV_PATH',    LARAVEL_ROOT . '/.env');
 define('SCHEMA_PATH', __DIR__ . '/schema.sql');
-define('IMPORT_DIR',  __DIR__ . '/ootpimport');
+define('IMPORT_DIR',  __DIR__);
 
 if (($_GET['key'] ?? '') !== INSTALL_KEY) {
     http_response_code(403);
@@ -92,7 +94,9 @@ if (!$action):
     echo "<p><strong>Schema:</strong> " . (file_exists(SCHEMA_PATH) ? "<span class='ok'>found</span> (" . number_format(filesize(SCHEMA_PATH)) . " bytes)" : "<span class='err'>NOT FOUND</span>") . "</p>";
 
     if (is_dir(IMPORT_DIR)) {
-        $files = glob(IMPORT_DIR . '/*.sql');
+        $files = array_merge(glob(IMPORT_DIR . '/*.sql'), glob(IMPORT_DIR . '/*.mysql.sql'));
+        $files = array_unique($files);
+        $files = array_filter($files, fn($f) => !in_array(basename($f), ['install.php', 'schema.sql', 'schema.mysql.sql']));
         $totalSize = array_sum(array_map('filesize', $files));
         echo "<p><strong>Data files:</strong> <span class='ok'>" . count($files) . " files</span> (" . number_format($totalSize / 1024 / 1024, 1) . " MB)</p>";
     } else {
@@ -190,23 +194,48 @@ else:
         runSqlFile($pdo, SCHEMA_PATH, 'schema.sql', $totalOk, $totalFail);
     }
 
-    // ── Data Import ──
-    if (in_array($action, ['import', 'full'])) {
-        echo "<h2>Importing Data...</h2>";
-        if (ob_get_level()) ob_flush(); flush();
+    // ── Data Import (one table at a time) ──
+    if (in_array($action, ['import', 'full', 'import_next'])) {
+        $offset = (int)($_POST['offset'] ?? 0);
 
         if (!is_dir(IMPORT_DIR)) {
-            echo "<p class='err'>ootpimport/ directory not found at " . IMPORT_DIR . "</p>";
+            echo "<p class='err'>Data directory not found at " . IMPORT_DIR . "</p>";
         } else {
-            $files = glob(IMPORT_DIR . '/*.sql');
+            $files = array_merge(glob(IMPORT_DIR . '/*.sql'), glob(IMPORT_DIR . '/*.mysql.sql'));
+            $files = array_unique($files);
+            $files = array_filter($files, fn($f) => !in_array(basename($f), ['install.php', 'schema.sql', 'schema.mysql.sql']));
+            $files = array_values($files);
             sort($files);
             $total = count($files);
 
-            foreach ($files as $i => $file) {
-                $table = basename($file, '.sql');
+            if ($action === 'import' || $action === 'full') { $offset = 0; }
+
+            if ($offset < $total) {
+                $file = $files[$offset];
+                $table = basename($file, '.mysql.sql');
+                if ($table === basename($file)) $table = basename($file, '.sql');
+                $num = $offset + 1;
+                echo "<h2>Importing [{$num}/{$total}] {$table}...</h2>";
+                if (ob_get_level()) ob_flush(); flush();
+
                 try { $pdo->exec("TRUNCATE TABLE `{$table}`"); } catch (PDOException $e) {}
-                $num = $i + 1;
-                runSqlFile($pdo, $file, "[{$num}/{$total}] {$table}", $totalOk, $totalFail);
+                runSqlFile($pdo, $file, $table, $totalOk, $totalFail);
+
+                $nextOffset = $offset + 1;
+                if ($nextOffset < $total) {
+                    // Auto-submit to next table
+                    echo "<p>Moving to next table...</p>";
+                    echo "<form id='autonext' method='post' action='?key={$k}'>";
+                    echo "<input type='hidden' name='action' value='import_next'>";
+                    echo "<input type='hidden' name='offset' value='{$nextOffset}'>";
+                    echo "<button>Continue importing ({$nextOffset}/{$total} remaining)</button>";
+                    echo "</form>";
+                    echo "<script>document.getElementById('autonext').submit();</script>";
+                } else {
+                    echo "<p class='ok'>All {$total} tables imported!</p>";
+                }
+            } else {
+                echo "<p class='ok'>Nothing to import.</p>";
             }
         }
     }
@@ -239,6 +268,8 @@ else:
             ['players_career_batting_stats',  'idx_pcbs_player_split',   'player_id, split_id'],
             ['players_career_pitching_stats', 'idx_pcps_player_split',   'player_id, split_id'],
             ['players_streak',               'idx_ps_streak_ended',      'streak_id, has_ended, value'],
+            ['team_starting_lineups',        'idx_tsl_team_vs',          'team_id, vs'],
+            ['team_pitching_staff',          'idx_tps_team',             'team_id'],
         ];
 
         $idxOk = 0; $idxSkip = 0;

@@ -2690,6 +2690,39 @@ CREATE TABLE `players_value` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
+-- Table structure for table `team_starting_lineups`
+--
+
+DROP TABLE IF EXISTS `team_starting_lineups`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `team_starting_lineups` (
+  `team_id` int DEFAULT NULL,
+  `vs` varchar(3) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `slot` smallint DEFAULT NULL,
+  `player_id` int DEFAULT NULL,
+  `bats` varchar(1) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `position` varchar(4) COLLATE utf8mb4_unicode_ci DEFAULT NULL
+) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `team_pitching_staff`
+--
+
+DROP TABLE IF EXISTS `team_pitching_staff`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `team_pitching_staff` (
+  `team_id` int DEFAULT NULL,
+  `player_id` int DEFAULT NULL,
+  `role` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `throws` varchar(1) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `sort_order` smallint DEFAULT NULL
+) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
 -- Table structure for table `projected_starting_pitchers`
 --
 

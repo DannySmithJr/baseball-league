@@ -120,6 +120,26 @@ class TeamController extends Controller
             $coldPitchers = $recentPitching->filter(fn($p) => (float)$p->era >= 4.50)->sortByDesc('era')->take(2)->values();
         }
 
+        // Starting lineups (vs RHP / vs LHP) from parsed almanac data
+        $lineupsRaw = DB::table('team_starting_lineups as tsl')
+            ->join('players as p', 'p.player_id', '=', 'tsl.player_id')
+            ->where('tsl.team_id', $id)
+            ->select('tsl.vs', 'tsl.slot', 'tsl.player_id', 'tsl.bats', 'tsl.position',
+                     'p.first_name', 'p.last_name')
+            ->orderBy('tsl.vs')->orderBy('tsl.slot')
+            ->get();
+        $lineups = ['rhp' => $lineupsRaw->where('vs', 'rhp')->values(),
+                     'lhp' => $lineupsRaw->where('vs', 'lhp')->values()];
+
+        // Pitching staff from parsed almanac data
+        $pitchingStaff = DB::table('team_pitching_staff as tps')
+            ->join('players as p', 'p.player_id', '=', 'tps.player_id')
+            ->where('tps.team_id', $id)
+            ->select('tps.player_id', 'tps.role', 'tps.throws', 'tps.sort_order',
+                     'p.first_name', 'p.last_name')
+            ->orderBy('tps.sort_order')
+            ->get();
+
         // Group roster by position group
         $roleLabels = [
             11 => 'Starter', 12 => 'Reliever', 13 => 'Closer',
@@ -164,7 +184,7 @@ class TeamController extends Controller
             'divisionStandings', 'homeAway', 'last10Rec',
             'extendedRecords', 'battingRankings', 'pitchingRankings', 'farmRank',
             'hotBatters', 'coldBatters', 'hotPitchers', 'coldPitchers',
-            'mlbLeaders',
+            'mlbLeaders', 'lineups', 'pitchingStaff',
         ));
     }
 

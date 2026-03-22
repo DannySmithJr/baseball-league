@@ -80,6 +80,116 @@
             </div>
             @endif
 
+            {{-- STARTING LINEUPS & PITCHING STAFF (from almanac) --}}
+            @if(($lineups['rhp']->isNotEmpty() || $lineups['lhp']->isNotEmpty()) || $pitchingStaff->isNotEmpty())
+            <div class="grid grid-cols-1 {{ ($lineups['rhp']->isNotEmpty() || $lineups['lhp']->isNotEmpty()) && $pitchingStaff->isNotEmpty() ? 'lg:grid-cols-3' : ($pitchingStaff->isNotEmpty() ? '' : 'lg:grid-cols-2') }} gap-4">
+
+                {{-- Lineup vs RHP --}}
+                @if($lineups['rhp']->isNotEmpty())
+                <div class="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+                    <div class="px-4 py-3 border-b border-gray-800">
+                        <h2 class="font-bold text-sm uppercase tracking-wider">Lineup vs. RHP</h2>
+                    </div>
+                    <div class="overflow-x-auto">
+                    <table class="w-full text-xs">
+                        <thead>
+                            <tr class="text-gray-500 uppercase tracking-wider border-b border-gray-800/60">
+                                <th class="text-center py-2 px-1 font-medium w-6">#</th>
+                                <th class="text-center py-2 px-1 font-medium w-6">B</th>
+                                <th class="text-left py-2 px-2 font-medium">Name</th>
+                                <th class="text-center py-2 px-2 font-medium">Pos</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-800/40">
+                            @foreach($lineups['rhp'] as $l)
+                            <tr class="hover:bg-gray-800/30 transition">
+                                <td class="text-center py-2 px-1 text-gray-500">{{ $l->slot }}</td>
+                                <td class="text-center py-2 px-1 text-gray-500">{{ $l->bats }}</td>
+                                <td class="py-2 px-2 whitespace-nowrap font-medium">
+                                    <a href="{{ route('player', $l->player_id) }}" class="text-white hover:text-red-400 transition">
+                                        {{ $l->first_name }} {{ $l->last_name }}
+                                    </a>
+                                </td>
+                                <td class="text-center py-2 px-2 text-yellow-500 font-semibold">{{ $l->position }}</td>
+                            </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                    </div>
+                </div>
+                @endif
+
+                {{-- Lineup vs LHP --}}
+                @if($lineups['lhp']->isNotEmpty())
+                <div class="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+                    <div class="px-4 py-3 border-b border-gray-800">
+                        <h2 class="font-bold text-sm uppercase tracking-wider">Lineup vs. LHP</h2>
+                    </div>
+                    <div class="overflow-x-auto">
+                    <table class="w-full text-xs">
+                        <thead>
+                            <tr class="text-gray-500 uppercase tracking-wider border-b border-gray-800/60">
+                                <th class="text-center py-2 px-1 font-medium w-6">#</th>
+                                <th class="text-center py-2 px-1 font-medium w-6">B</th>
+                                <th class="text-left py-2 px-2 font-medium">Name</th>
+                                <th class="text-center py-2 px-2 font-medium">Pos</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-800/40">
+                            @foreach($lineups['lhp'] as $l)
+                            <tr class="hover:bg-gray-800/30 transition">
+                                <td class="text-center py-2 px-1 text-gray-500">{{ $l->slot }}</td>
+                                <td class="text-center py-2 px-1 text-gray-500">{{ $l->bats }}</td>
+                                <td class="py-2 px-2 whitespace-nowrap font-medium">
+                                    <a href="{{ route('player', $l->player_id) }}" class="text-white hover:text-red-400 transition">
+                                        {{ $l->first_name }} {{ $l->last_name }}
+                                    </a>
+                                </td>
+                                <td class="text-center py-2 px-2 text-yellow-500 font-semibold">{{ $l->position }}</td>
+                            </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                    </div>
+                </div>
+                @endif
+
+                {{-- Pitching Staff --}}
+                @if($pitchingStaff->isNotEmpty())
+                <div class="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+                    <div class="px-4 py-3 border-b border-gray-800">
+                        <h2 class="font-bold text-sm uppercase tracking-wider">Pitching Staff</h2>
+                    </div>
+                    <div class="overflow-x-auto">
+                    <table class="w-full text-xs">
+                        <thead>
+                            <tr class="text-gray-500 uppercase tracking-wider border-b border-gray-800/60">
+                                <th class="text-left py-2 px-2 font-medium">Role</th>
+                                <th class="text-center py-2 px-1 font-medium w-6">T</th>
+                                <th class="text-left py-2 px-2 font-medium">Pitcher</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-800/40">
+                            @foreach($pitchingStaff as $ps)
+                            <tr class="hover:bg-gray-800/30 transition">
+                                <td class="py-2 px-2 text-gray-500">{{ $ps->role }}</td>
+                                <td class="text-center py-2 px-1 text-gray-500">{{ $ps->throws }}</td>
+                                <td class="py-2 px-2 whitespace-nowrap font-medium">
+                                    <a href="{{ route('player', $ps->player_id) }}" class="text-white hover:text-red-400 transition">
+                                        {{ $ps->first_name }} {{ $ps->last_name }}
+                                    </a>
+                                </td>
+                            </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                    </div>
+                </div>
+                @endif
+
+            </div>
+            @endif
+
             {{-- PITCHING STAFF — three sections --}}
             @php
             $pitcherSections = [
@@ -433,35 +543,6 @@
                     @endif
                 </div>
             </div>
-
-            {{-- Farm System Rank --}}
-            @if(!empty($farmRank))
-            <div class="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
-                <div class="px-4 py-2.5 border-b border-gray-800">
-                    <h2 class="font-bold text-sm uppercase tracking-wider text-gray-400">Farm System</h2>
-                </div>
-                <div class="p-3 space-y-1.5 text-xs">
-                    <div class="flex justify-between">
-                        <span class="text-gray-500">Farm Rank</span>
-                        <span class="text-white font-bold text-sm">#{{ $farmRank['rank'] }}</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-gray-500">Prospects</span>
-                        <span class="text-gray-300">{{ $farmRank['prospect_count'] }}</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-gray-500">Elite Prospects</span>
-                        <span class="text-gray-300">{{ $farmRank['elite_count'] }}</span>
-                    </div>
-                    @if($farmRank['top_prospect'])
-                    <div class="flex justify-between">
-                        <span class="text-gray-500">Top Prospect</span>
-                        <span class="text-gray-300">{{ $farmRank['top_prospect'] }}</span>
-                    </div>
-                    @endif
-                </div>
-            </div>
-            @endif
 
             {{-- Batting Stats & Rankings --}}
             @if(!empty($battingRankings))

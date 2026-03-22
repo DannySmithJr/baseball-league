@@ -34,43 +34,17 @@
     <h2 class="text-xs font-bold tracking-widest text-red-500 uppercase mb-1">Featured Matchups</h2>
     <p class="text-xs text-gray-600 mb-5">Top 12 series by competitive interest — closeness, quality, star power & momentum</p>
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        @foreach(array_values($featuredMatchups) as $fi => $fm)
-        @php
-            $fAway    = $teamRecords[$fm['away']] ?? null;
-            $fHome    = $teamRecords[$fm['home']] ?? null;
-            $fDateStr = $fmtDate($fm['date']);
-            $fAwayMom = $fm['awayMom'];
-            $fHomeMom = $fm['homeMom'];
-        @endphp
-        @if($fAway && $fHome)
+        @foreach($featuredMatchups as $fm)
         <x-game-matchup
-            :date="$fDateStr"
-            :away="[
-                'abbr'     => $fAway['abbr'],
-                'name'     => $fAway['nickname'],
-                'logo'     => $fAway['logo'],
-                'bgColor'  => $fAway['bgColor'],
-                'record'   => $fAway['w'].'-'.$fAway['l'],
-                'rpg'      => $fAway['rpg'],
-                'avg'      => $fAway['teamAvg'],
-                'hr'       => $fAway['teamHr'],
-                'momentum' => $fAwayMom,
-            ]"
-            :home="[
-                'abbr'     => $fHome['abbr'],
-                'name'     => $fHome['nickname'],
-                'logo'     => $fHome['logo'],
-                'bgColor'  => $fHome['bgColor'],
-                'record'   => $fHome['w'].'-'.$fHome['l'],
-                'rpg'      => $fHome['rpg'],
-                'avg'      => $fHome['teamAvg'],
-                'hr'       => $fHome['teamHr'],
-                'momentum' => $fHomeMom,
-            ]"
-            :awayStarter="$fm['awaySpName'] ? array_merge(['name' => $fm['awaySpName']], $fm['awaySpStats'] ?? ['w'=>0,'l'=>0,'era'=>'-.--','k'=>0]) : null"
-            :homeStarter="$fm['homeSpName'] ? array_merge(['name' => $fm['homeSpName']], $fm['homeSpStats'] ?? ['w'=>0,'l'=>0,'era'=>'-.--','k'=>0]) : null"
+            :date="$fmtDate($fm['date'])"
+            :away="$fm['away']"
+            :home="$fm['home']"
+            :awayStarter="$fm['awayStarter']"
+            :homeStarter="$fm['homeStarter']"
+            :odds="$fm['odds']"
+            :location="$fm['location']"
+            :stream="$fm['stream'] ?? false"
         />
-        @endif
         @endforeach
     </div>
 </section>

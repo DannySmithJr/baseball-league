@@ -165,13 +165,32 @@ class ScheduleController extends Controller
         $recentRecs  = $ootp->teamRecentRecords(10);
         $runsPerGame = $ootp->teamRunsPerGame();
         $teamBatting = $ootp->teamBattingStats();
-        $gameOdds    = $ootp->computeGameOdds($games, $homeAwayRecs, $starterStats, $recentRecs, $runsPerGame);
+        $bullpenEra  = $ootp->teamBullpenEra();
+
+        // Lineup OPS vs starter handedness
+        $starterHands = $ootp->playerThrows($starterIds);
+        $lineupHandMap = [];
+        foreach ($games as $g) {
+            if ((int)$g->played) continue;
+            $s1Hand = $starterHands[(int)($g->starter1 ?? 0)] ?? 'R';
+            $s0Hand = $starterHands[(int)($g->starter0 ?? 0)] ?? 'R';
+            $lineupHandMap[(int)$g->away_team] = $s1Hand === 'R' ? 'rhp' : 'lhp';
+            $lineupHandMap[(int)$g->home_team] = $s0Hand === 'R' ? 'rhp' : 'lhp';
+        }
+        $lineupOps = $ootp->lineupOpsVsHand($lineupHandMap);
+
+        $gameOdds = $ootp->computeGameOdds($games, $homeAwayRecs, $starterStats, $recentRecs, $runsPerGame, $bullpenEra, $lineupOps, $starterHands);
+
+        // Build matchup cards for unplayed games (shared with preview)
+        $matchupCards = $ootp->buildMatchupCards($games, $starterStats, $homeAwayRecs, $teamLogos, $teamBatting, $runsPerGame, $gameOdds, $teamTzOffsets, $gameStreams);
+        $matchupCardsByGame = [];
+        foreach ($matchupCards as $card) $matchupCardsByGame[$card['game_id']] = $card;
 
         return view('schedule.index', compact(
             'teamId', 'date', 'prevDate', 'nextDate', 'todayDate',
             'games', 'allTeams', 'currentTeam', 'gameDate',
             'starterStats', 'homeAwayRecs', 'teamLogos', 'teamTzOffsets', 'gameStreams', 'gameOdds',
-            'runsPerGame', 'teamBatting',
+            'runsPerGame', 'teamBatting', 'matchupCardsByGame',
         ));
     }
 }
