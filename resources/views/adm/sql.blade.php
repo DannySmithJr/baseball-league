@@ -28,6 +28,12 @@
                             class="bg-gray-600 hover:bg-gray-500 text-white text-sm font-semibold px-5 py-2 rounded transition">
                             Install Selected
                         </button>
+                        @if(($almanacDir ?? null) && ($almanacTeamCount ?? 0) > 0)
+                        <button id="btn-parse-lineups-top" onclick="parseLineups()"
+                            class="bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold px-5 py-2 rounded transition">
+                            Parse Lineups ({{ $almanacTeamCount }})
+                        </button>
+                        @endif
                         <label class="flex items-center gap-2 text-sm text-gray-500 cursor-pointer ml-auto">
                             <input type="checkbox" id="select-all" onchange="toggleAll(this.checked)" class="rounded">
                             Select All
@@ -118,7 +124,7 @@
             <div class="bg-white shadow-sm rounded-lg overflow-hidden">
                 <div class="px-6 py-4 border-b border-gray-100 flex items-center gap-3 flex-wrap">
                     <button id="btn-parse-lineups" onclick="parseLineups()"
-                        class="bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-semibold px-5 py-2 rounded transition">
+                        class="bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold px-5 py-2 rounded transition">
                         Parse Lineups &amp; Pitching Staff
                     </button>
                     <span class="text-sm text-gray-500">{{ $almanacTeamCount }} team files from <strong>almanac_{{ $almanacYear }}</strong></span>
