@@ -158,6 +158,11 @@ class SqlController extends Controller
 
         $deleted = false;
         if ($done && empty($errors)) {
+            // Copy to deploy directory for live server
+            $deployDir = database_path('migrations/data');
+            if (!is_dir($deployDir)) @mkdir($deployDir, 0755, true);
+            @copy($fullPath, $deployDir . '/' . $request->input('file'));
+
             if (app()->isProduction()) {
                 @unlink($fullPath);
                 $deleted = true;
