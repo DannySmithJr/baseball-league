@@ -1804,7 +1804,7 @@ class OotpService
             DB::table('games as g')
                 ->join('teams as ht', 'g.home_team', '=', 'ht.team_id')
                 ->join('teams as at', 'g.away_team', '=', 'at.team_id')
-                ->where('g.game_type', 0)
+                ->whereIn('g.game_type', [0, 3, 4])
                 ->where('g.date', $date)
                 ->when($teamId > 0,
                     fn ($q) => $q->where(fn ($q2) => $q2->where('g.home_team', $teamId)->orWhere('g.away_team', $teamId)),
@@ -1869,7 +1869,7 @@ class OotpService
             DB::table('games as g')
                 ->join('teams as ht', 'g.home_team', '=', 'ht.team_id')
                 ->join('teams as at', 'g.away_team', '=', 'at.team_id')
-                ->where('g.game_type', 0)
+                ->whereIn('g.game_type', [0, 3, 4])
                 ->whereBetween('g.date', [$start, $end])
                 ->when($teamId > 0,
                     fn ($q) => $q->where(fn ($q2) => $q2->where('g.home_team', $teamId)->orWhere('g.away_team', $teamId)),
