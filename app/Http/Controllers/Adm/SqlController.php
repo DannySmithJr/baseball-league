@@ -73,23 +73,20 @@ class SqlController extends Controller
 
         $lastImport = \App\Models\Setting::instance()->ootp_last_import ?? null;
 
-        // Detect OOTP almanac directory for lineups
+        // Detect OOTP almanac directory for lineups — use season year from DB
         $almanacDir = null;
-        $almanacYear = null;
         $almanacTeamCount = 0;
         $ootpBase = 'C:/Users/danny/Documents/Out of the Park Developments/OOTP Baseball 27/saved_games/sMLB.lg/news';
-        if (is_dir($ootpBase)) {
-            $almanacs = glob($ootpBase . '/almanac_*', GLOB_ONLYDIR);
-            if (!empty($almanacs)) {
-                usort($almanacs, fn($a, $b) => basename($b) <=> basename($a));
-                $almanacDir = $almanacs[0] . '/teams';
-                $almanacYear = str_replace('almanac_', '', basename($almanacs[0]));
-                if (is_dir($almanacDir)) {
-                    $almanacTeamCount = count(array_filter(
-                        glob($almanacDir . '/team_[0-9]*.html'),
-                        fn($f) => preg_match('/team_\d+\.html$/', basename($f))
-                    ));
-                }
+        $almanacYear = app(\App\Services\OotpService::class)->seasonYear();
+        if ($almanacYear && is_dir($ootpBase)) {
+            $almanacDir = $ootpBase . '/almanac_' . $almanacYear . '/teams';
+            if (is_dir($almanacDir)) {
+                $almanacTeamCount = count(array_filter(
+                    glob($almanacDir . '/team_[0-9]*.html'),
+                    fn($f) => preg_match('/team_\d+\.html$/', basename($f))
+                ));
+            } else {
+                $almanacDir = null;
             }
         }
 
@@ -187,15 +184,16 @@ class SqlController extends Controller
         $output = [];
         $errors = [];
 
-        // Find OOTP almanac directory (dev) or public/reports/teams (live)
+        // Find OOTP almanac directory using season year from DB
         $reportsDir = null;
         $ootpBase = 'C:/Users/danny/Documents/Out of the Park Developments/OOTP Baseball 27/saved_games/sMLB.lg/news';
-        if (is_dir($ootpBase)) {
-            $almanacs = glob($ootpBase . '/almanac_*', GLOB_ONLYDIR);
-            if (!empty($almanacs)) {
-                usort($almanacs, fn($a, $b) => basename($b) <=> basename($a));
-                $reportsDir = $almanacs[0] . '/teams';
-                $output[] = 'Source: ' . basename($almanacs[0]);
+        $seasonYear = app(\App\Services\OotpService::class)->seasonYear();
+        if ($seasonYear && is_dir($ootpBase)) {
+            $reportsDir = $ootpBase . '/almanac_' . $seasonYear . '/teams';
+            if (is_dir($reportsDir)) {
+                $output[] = 'Source: almanac_' . $seasonYear;
+            } else {
+                $reportsDir = null;
             }
         }
         if (!$reportsDir || !is_dir($reportsDir)) {

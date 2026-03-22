@@ -16,15 +16,35 @@ $reportsDir = null;
 $lineupFile = __DIR__ . '/team_starting_lineups.sql';
 $staffFile  = __DIR__ . '/team_pitching_staff.sql';
 
-// Dev: auto-detect from OOTP saved game directory
+// Dev: use season year from DB to find correct almanac
 $ootpBase = 'C:/Users/danny/Documents/Out of the Park Developments/OOTP Baseball 27/saved_games/sMLB.lg/news';
 if (is_dir($ootpBase)) {
-    // Find newest almanac_YYYY directory
-    $almanacs = glob($ootpBase . '/almanac_*', GLOB_ONLYDIR);
-    if (!empty($almanacs)) {
-        usort($almanacs, fn($a, $b) => basename($b) <=> basename($a)); // newest first
-        $reportsDir = $almanacs[0] . '/teams';
-        echo "Using OOTP almanac: " . basename($almanacs[0]) . "\n";
+    // Try to get season year from DB
+    try {
+        require_once __DIR__ . '/../../vendor/autoload.php';
+        $app = require_once __DIR__ . '/../../bootstrap/app.php';
+        $app->make('Illuminate\Contracts\Console\Kernel')->bootstrap();
+        $seasonYear = app(\App\Services\OotpService::class)->seasonYear();
+    } catch (\Exception $e) {
+        $seasonYear = null;
+    }
+
+    if ($seasonYear) {
+        $almanacPath = $ootpBase . '/almanac_' . $seasonYear . '/teams';
+        if (is_dir($almanacPath)) {
+            $reportsDir = $almanacPath;
+            echo "Using OOTP almanac: almanac_{$seasonYear}\n";
+        }
+    }
+
+    // Fallback: newest almanac
+    if (!$reportsDir) {
+        $almanacs = glob($ootpBase . '/almanac_*', GLOB_ONLYDIR);
+        if (!empty($almanacs)) {
+            usort($almanacs, fn($a, $b) => basename($b) <=> basename($a));
+            $reportsDir = $almanacs[0] . '/teams';
+            echo "Using OOTP almanac: " . basename($almanacs[0]) . "\n";
+        }
     }
 }
 
