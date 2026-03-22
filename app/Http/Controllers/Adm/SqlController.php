@@ -73,7 +73,27 @@ class SqlController extends Controller
 
         $lastImport = \App\Models\Setting::instance()->ootp_last_import ?? null;
 
-        return view('adm.sql', compact('files', 'path', 'lastImport'));
+        // Detect OOTP almanac directory for lineups
+        $almanacDir = null;
+        $almanacYear = null;
+        $almanacTeamCount = 0;
+        $ootpBase = 'C:/Users/danny/Documents/Out of the Park Developments/OOTP Baseball 27/saved_games/sMLB.lg/news';
+        if (is_dir($ootpBase)) {
+            $almanacs = glob($ootpBase . '/almanac_*', GLOB_ONLYDIR);
+            if (!empty($almanacs)) {
+                usort($almanacs, fn($a, $b) => basename($b) <=> basename($a));
+                $almanacDir = $almanacs[0] . '/teams';
+                $almanacYear = str_replace('almanac_', '', basename($almanacs[0]));
+                if (is_dir($almanacDir)) {
+                    $almanacTeamCount = count(array_filter(
+                        glob($almanacDir . '/team_[0-9]*.html'),
+                        fn($f) => preg_match('/team_\d+\.html$/', basename($f))
+                    ));
+                }
+            }
+        }
+
+        return view('adm.sql', compact('files', 'path', 'lastImport', 'almanacDir', 'almanacYear', 'almanacTeamCount'));
     }
 
     public function process(Request $request)

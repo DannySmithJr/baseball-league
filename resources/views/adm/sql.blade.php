@@ -28,10 +28,6 @@
                             class="bg-gray-600 hover:bg-gray-500 text-white text-sm font-semibold px-5 py-2 rounded transition">
                             Install Selected
                         </button>
-                        <button id="btn-parse-lineups" onclick="parseLineups()"
-                            class="bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-semibold px-5 py-2 rounded transition">
-                            Parse Lineups
-                        </button>
                         <label class="flex items-center gap-2 text-sm text-gray-500 cursor-pointer ml-auto">
                             <input type="checkbox" id="select-all" onchange="toggleAll(this.checked)" class="rounded">
                             Select All
@@ -116,6 +112,25 @@
                     </div>
                 @endif
             </div>
+
+            {{-- Almanac / Lineups Section --}}
+            @if($almanacDir && $almanacTeamCount > 0)
+            <div class="bg-white shadow-sm rounded-lg overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-100 flex items-center gap-3 flex-wrap">
+                    <button id="btn-parse-lineups" onclick="parseLineups()"
+                        class="bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-semibold px-5 py-2 rounded transition">
+                        Parse Lineups &amp; Pitching Staff
+                    </button>
+                    <span class="text-sm text-gray-500">{{ $almanacTeamCount }} team files from <strong>almanac_{{ $almanacYear }}</strong></span>
+                </div>
+                <div class="px-6 py-3">
+                    <div class="bg-cyan-50 border border-cyan-200 text-cyan-800 px-4 py-3 rounded-lg text-sm">
+                        <code class="font-mono text-xs">{{ $almanacDir }}</code>
+                    </div>
+                    <div id="lineup-status" class="hidden mt-3 px-4 py-3 rounded-lg text-sm font-semibold"></div>
+                </div>
+            </div>
+            @endif
 
             {{-- Error log --}}
             <div id="error-panel" class="hidden bg-white shadow-sm rounded-lg p-6">
@@ -298,12 +313,12 @@
 
         async function parseLineups() {
             const btn = document.getElementById('btn-parse-lineups');
+            const status = document.getElementById('lineup-status');
             btn.disabled = true;
             btn.textContent = 'Parsing...';
-
-            document.getElementById('overall-status').style.display = 'block';
-            document.getElementById('overall-bar').style.width = '50%';
-            document.getElementById('overall-label').textContent = 'Parsing lineups from OOTP almanac...';
+            status.className = 'mt-3 px-4 py-3 rounded-lg text-sm font-semibold bg-blue-50 text-blue-700';
+            status.textContent = 'Parsing lineups from OOTP almanac...';
+            status.classList.remove('hidden');
 
             try {
                 const resp = await fetch(parseLineupsUrl, {
@@ -312,21 +327,22 @@
                 });
                 const data = await resp.json();
 
-                document.getElementById('overall-bar').style.width = '100%';
-
                 if (data.errors?.length) {
                     data.errors.forEach(e => logError(e));
-                    document.getElementById('overall-label').textContent = '⚠ Lineup parse had errors';
+                    status.className = 'mt-3 px-4 py-3 rounded-lg text-sm font-semibold bg-yellow-50 text-yellow-700';
+                    status.textContent = '⚠ ' + data.errors.join(', ');
                 } else {
-                    document.getElementById('overall-label').textContent = '✅ ' + (data.output?.join(' | ') ?? 'Done');
+                    status.className = 'mt-3 px-4 py-3 rounded-lg text-sm font-semibold bg-green-50 text-green-700';
+                    status.textContent = '✅ ' + (data.output?.join(' → ') ?? 'Done');
                 }
             } catch (e) {
                 logError('Lineup parse failed: ' + e.message);
-                document.getElementById('overall-label').textContent = '⚠ Failed';
+                status.className = 'mt-3 px-4 py-3 rounded-lg text-sm font-semibold bg-red-50 text-red-700';
+                status.textContent = '⚠ Failed: ' + e.message;
             }
 
             btn.disabled = false;
-            btn.textContent = 'Parse Lineups';
+            btn.textContent = 'Parse Lineups & Pitching Staff';
         }
 
         function logError(msg) {
