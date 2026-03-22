@@ -28,6 +28,10 @@
                             class="bg-gray-600 hover:bg-gray-500 text-white text-sm font-semibold px-5 py-2 rounded transition">
                             Install Selected
                         </button>
+                        <button id="btn-parse-lineups" onclick="parseLineups()"
+                            class="bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-semibold px-5 py-2 rounded transition">
+                            Parse Lineups
+                        </button>
                         <label class="flex items-center gap-2 text-sm text-gray-500 cursor-pointer ml-auto">
                             <input type="checkbox" id="select-all" onchange="toggleAll(this.checked)" class="rounded">
                             Select All
@@ -123,9 +127,10 @@
     </div>
 
     <script>
-        const processUrl = "{{ route('adm.sql.process') }}";
-        const metaUrl    = "{{ route('adm.sql.meta') }}";
-        const csrf       = "{{ csrf_token() }}";
+        const processUrl      = "{{ route('adm.sql.process') }}";
+        const metaUrl         = "{{ route('adm.sql.meta') }}";
+        const parseLineupsUrl = "{{ route('adm.sql.parse-lineups') }}";
+        const csrf            = "{{ csrf_token() }}";
 
         // Load meta (export date + game date) on page load
         async function loadMeta() {
@@ -289,6 +294,39 @@
             }
 
             return totalErrors;
+        }
+
+        async function parseLineups() {
+            const btn = document.getElementById('btn-parse-lineups');
+            btn.disabled = true;
+            btn.textContent = 'Parsing...';
+
+            document.getElementById('overall-status').style.display = 'block';
+            document.getElementById('overall-bar').style.width = '50%';
+            document.getElementById('overall-label').textContent = 'Parsing lineups from OOTP almanac...';
+
+            try {
+                const resp = await fetch(parseLineupsUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf },
+                });
+                const data = await resp.json();
+
+                document.getElementById('overall-bar').style.width = '100%';
+
+                if (data.errors?.length) {
+                    data.errors.forEach(e => logError(e));
+                    document.getElementById('overall-label').textContent = '⚠ Lineup parse had errors';
+                } else {
+                    document.getElementById('overall-label').textContent = '✅ ' + (data.output?.join(' | ') ?? 'Done');
+                }
+            } catch (e) {
+                logError('Lineup parse failed: ' + e.message);
+                document.getElementById('overall-label').textContent = '⚠ Failed';
+            }
+
+            btn.disabled = false;
+            btn.textContent = 'Parse Lineups';
         }
 
         function logError(msg) {

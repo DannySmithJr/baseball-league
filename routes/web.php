@@ -55,6 +55,7 @@ Route::middleware(['auth', 'verified', 'admin'])->prefix('adm')->name('adm.')->g
     Route::get('sql', [SqlController::class, 'index'])->name('sql.index');
     Route::get('sql/meta', [SqlController::class, 'meta'])->name('sql.meta');
     Route::post('sql/process', [SqlController::class, 'process'])->name('sql.process');
+    Route::post('sql/parse-lineups', [SqlController::class, 'parseLineups'])->name('sql.parse-lineups');
     Route::get('streams', [StreamScheduleController::class, 'index'])->name('streams');
     Route::post('streams', [StreamScheduleController::class, 'store'])->name('streams.store');
     Route::delete('streams/{id}', [StreamScheduleController::class, 'destroy'])->name('streams.destroy');
@@ -62,70 +63,6 @@ Route::middleware(['auth', 'verified', 'admin'])->prefix('adm')->name('adm.')->g
     Route::post('news-sources', [\App\Http\Controllers\Adm\NewsSourceController::class, 'store'])->name('news-sources.store');
     Route::delete('news-sources/{id}', [\App\Http\Controllers\Adm\NewsSourceController::class, 'destroy'])->name('news-sources.destroy');
 
-    Route::post('parse-lineups', function () {
-        $pdo = \Illuminate\Support\Facades\DB::connection()->getPdo();
-        $output = [];
-
-        // Create tables if missing
-        $pdo->exec("CREATE TABLE IF NOT EXISTS `team_starting_lineups` (
-            `team_id` int DEFAULT NULL, `vs` varchar(3) DEFAULT NULL, `slot` smallint DEFAULT NULL,
-            `player_id` int DEFAULT NULL, `bats` varchar(1) DEFAULT NULL, `position` varchar(4) DEFAULT NULL
-        ) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
-        $pdo->exec("CREATE TABLE IF NOT EXISTS `team_pitching_staff` (
-            `team_id` int DEFAULT NULL, `player_id` int DEFAULT NULL, `role` varchar(20) DEFAULT NULL,
-            `throws` varchar(1) DEFAULT NULL, `sort_order` smallint DEFAULT NULL
-        ) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
-        $output[] = 'Tables created/verified';
-
-        $reportsDir = public_path('reports/teams');
-        if (!is_dir($reportsDir)) return back()->with('error', 'reports/teams/ not found');
-
-        $files = array_filter(glob($reportsDir . '/team_[0-9]*.html'), fn($f) => preg_match('/team_\d+\.html$/', basename($f)));
-        $output[] = count($files) . ' team files found';
-
-        $lineupRows = [];
-        $staffRows = [];
-
-        foreach ($files as $file) {
-            if (!preg_match('/team_(\d+)\.html$/', basename($file), $m)) continue;
-            $teamId = (int)$m[1];
-            $html = file_get_contents($file);
-
-            foreach (['RHP' => 'rhp', 'LHP' => 'lhp'] as $label => $vs) {
-                if (!preg_match('/LINEUP VS ' . $label . '<\/th>.*?<\/table>\s*<table[^>]*>(.*?)<\/table>/si', $html, $tm)) continue;
-                preg_match_all('/<tr>\s*<td[^>]*>(\d+)<\/td>\s*<td[^>]*>([^<]*)<\/td>\s*<td[^>]*><a href="[^"]*player_(\d*)\.[^"]*">([^<]*)<\/a><\/td>\s*<td[^>]*>([^<]*)<\/td>/si', $tm[1], $matches, PREG_SET_ORDER);
-                foreach ($matches as $row) {
-                    $pid = (int)$row[3];
-                    if ($pid === 0 || trim($row[5]) === '') continue;
-                    $lineupRows[] = "({$teamId},'" . addslashes($vs) . "'," . (int)$row[1] . ",{$pid},'" . addslashes(trim($row[2])) . "','" . addslashes(trim($row[5])) . "')";
-                }
-            }
-
-            if (preg_match('/PITCHING STAFF<\/th>.*?<\/table>\s*<table[^>]*>(.*?)<\/table>/si', $html, $pm)) {
-                preg_match_all('/<tr>(.*?)<\/tr>/si', $pm[1], $rows);
-                $order = 0;
-                foreach ($rows[1] as $rowHtml) {
-                    if (!preg_match('/<td[^>]*>([^<]+)<\/td>\s*<td[^>]*>([^<]*)<\/td>\s*<td[^>]*><a href="[^"]*player_(\d+)\.[^"]*">/si', $rowHtml, $rm)) continue;
-                    $order++;
-                    $staffRows[] = "({$teamId}," . (int)$rm[3] . ",'" . addslashes(trim($rm[1])) . "','" . addslashes(trim($rm[2])) . "',{$order})";
-                }
-            }
-        }
-
-        $pdo->exec("TRUNCATE TABLE `team_starting_lineups`");
-        $pdo->exec("TRUNCATE TABLE `team_pitching_staff`");
-
-        if ($lineupRows) {
-            $pdo->exec("INSERT INTO `team_starting_lineups` VALUES " . implode(",", $lineupRows));
-            $output[] = count($lineupRows) . ' lineup slots imported';
-        }
-        if ($staffRows) {
-            $pdo->exec("INSERT INTO `team_pitching_staff` VALUES " . implode(",", $staffRows));
-            $output[] = count($staffRows) . ' pitching staff imported';
-        }
-
-        return back()->with('status', implode(' | ', $output));
-    })->name('parse-lineups');
 });
 
 Route::view('profile', 'profile')
