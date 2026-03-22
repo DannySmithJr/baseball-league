@@ -142,7 +142,14 @@
 
         {{-- Row 3: Copyright --}}
         @php $founded = 2026; $yr = (int)date('Y'); @endphp
-        <p class="text-sm text-gray-400">&copy; {{ $yr > $founded ? $founded.'-'.$yr : $founded }} {{ $settings->league_abbr }} One Media. All rights reserved.</p>
+        <div class="flex items-center justify-between">
+            <p class="text-sm text-gray-400">&copy; {{ $yr > $founded ? $founded.'-'.$yr : $founded }} {{ $settings->league_abbr }} One Media. All rights reserved.</p>
+            @auth
+                @if(auth()->user()->isAdmin())
+                <p class="text-xs text-gray-600">{{ number_format((microtime(true) - LARAVEL_START) * 1000) }}ms | {{ count(\DB::getQueryLog()) }} queries</p>
+                @endif
+            @endauth
+        </div>
 
     </div>
 </footer>
