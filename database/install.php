@@ -1,138 +1,305 @@
-#!/usr/bin/env php
 <?php
 /**
- * Standalone database installer for sMLB.
+ * sMLB Standalone Database Installer — Browser Based
  *
- * Usage (from project root):
- *   php database/install.php
+ * Upload to server: /database/install.php
+ * Visit: https://smlb.one/database/install.php?key=smlb2026install
  *
- * This script:
- *   1. Reads .env for DB credentials
- *   2. Imports database/schema.sql (creates all tables)
- *   3. Runs Laravel migrations (custom tables: settings, rivalries, etc.)
- *   4. Seeds initial data (team logos, news sources)
+ * Reads ../.env for DB credentials automatically. No terminal needed.
  */
 
-// ── Parse .env ──────────────────────────────────────────────────────────────
+define('INSTALL_KEY', 'smlb2026install');
+define('LARAVEL_ROOT', '/home/smlbemgt/baseball-league');
+define('ENV_PATH',    LARAVEL_ROOT . '/.env');
+define('SCHEMA_PATH', __DIR__ . '/schema.sql');
+define('IMPORT_DIR',  __DIR__ . '/ootpimport');
 
-$envPath = __DIR__ . '/../.env';
-if (!file_exists($envPath)) {
-    die("ERROR: .env file not found at $envPath\n");
+if (($_GET['key'] ?? '') !== INSTALL_KEY) {
+    http_response_code(403);
+    die('Access denied. Append ?key=YOUR_KEY to the URL.');
 }
 
-$env = [];
-foreach (file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
-    if (str_starts_with(trim($line), '#')) continue;
-    if (!str_contains($line, '=')) continue;
-    [$key, $val] = explode('=', $line, 2);
-    $env[trim($key)] = trim($val, " \t\n\r\0\x0B\"'");
+set_time_limit(600);
+ini_set('memory_limit', '512M');
+
+function parseEnv(string $path): array {
+    $vars = [];
+    if (!file_exists($path)) return $vars;
+    foreach (file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
+        $line = trim($line);
+        if ($line === '' || $line[0] === '#') continue;
+        if (str_contains($line, '=')) {
+            [$k, $v] = explode('=', $line, 2);
+            $vars[trim($k)] = trim($v, " \t\n\r\0\x0B\"'");
+        }
+    }
+    return $vars;
 }
 
-$host = $env['DB_HOST'] ?? '127.0.0.1';
-$port = $env['DB_PORT'] ?? '3306';
-$db   = $env['DB_DATABASE'] ?? '';
-$user = $env['DB_USERNAME'] ?? '';
-$pass = $env['DB_PASSWORD'] ?? '';
+$env = parseEnv(ENV_PATH);
+$dbHost = $env['DB_HOST'] ?? 'localhost';
+$dbPort = $env['DB_PORT'] ?? '3306';
+$dbName = $env['DB_DATABASE'] ?? '';
+$dbUser = $env['DB_USERNAME'] ?? '';
+$dbPass = $env['DB_PASSWORD'] ?? '';
 
-if (!$db || !$user) {
-    die("ERROR: DB_DATABASE and DB_USERNAME must be set in .env\n");
+if (!$dbName || !$dbUser) {
+    die('Could not read DB credentials from .env — check path: ' . (realpath(ENV_PATH) ?: ENV_PATH));
 }
 
-echo "Database: $db @ $host:$port (user: $user)\n";
+$action = $_POST['action'] ?? $_GET['action'] ?? null;
+$k = INSTALL_KEY;
+?><!DOCTYPE html>
+<html><head>
+<title>sMLB Database Installer</title>
+<style>
+body{background:#0f172a;color:#e2e8f0;font-family:'Courier New',monospace;padding:2rem;max-width:900px;margin:0 auto}
+h1{color:#ef4444}h2{color:#94a3b8;border-bottom:1px solid #334155;padding-bottom:.5rem}
+.ok{color:#4ade80}.err{color:#f87171}.warn{color:#fbbf24}.step{margin:.2rem 0}
+.box{background:#1e293b;border:1px solid #334155;border-radius:8px;padding:1.5rem;margin:1rem 0}
+a{color:#60a5fa}
+button{background:#ef4444;color:#fff;border:none;padding:.6rem 1.5rem;font-size:.9rem;cursor:pointer;border-radius:6px;font-family:inherit;margin:.3rem 0}
+button:hover{background:#dc2626}
+.btn-blue{background:#2563eb}.btn-blue:hover{background:#1d4ed8}
+.btn-green{background:#059669}.btn-green:hover{background:#047857}
+.btn-purple{background:#7c3aed}.btn-purple:hover{background:#6d28d9}
+.muted{color:#64748b;font-size:.85rem}
+</style>
+</head><body>
+<h1>sMLB Database Installer</h1>
+<?php
 
-// ── Connect ─────────────────────────────────────────────────────────────────
+if (!$action):
+    // ── Dashboard ──
+    echo "<div class='box'>";
+    echo "<p><strong>Database:</strong> {$dbName}</p>";
+    echo "<p><strong>User:</strong> {$dbUser} @ {$dbHost}:{$dbPort}</p>";
 
-try {
-    $pdo = new PDO("mysql:host=$host;port=$port;dbname=$db;charset=utf8mb4", $user, $pass, [
-        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-    ]);
-} catch (PDOException $e) {
-    die("ERROR: Cannot connect to database: " . $e->getMessage() . "\n");
-}
+    try {
+        $pdo = new PDO("mysql:host={$dbHost};port={$dbPort};dbname={$dbName}", $dbUser, $dbPass, [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+        ]);
+        echo "<p class='ok'>&#10003; Database connection successful</p>";
+        $tables = $pdo->query("SHOW TABLES")->fetchAll(PDO::FETCH_COLUMN);
+        echo "<p>Existing tables: <strong>" . count($tables) . "</strong></p>";
+    } catch (PDOException $e) {
+        echo "<p class='err'>&#10007; Connection failed: " . htmlspecialchars($e->getMessage()) . "</p>";
+        echo "<p class='warn'>Fix your .env DB credentials and reload this page.</p>";
+        echo "</div></body></html>";
+        exit;
+    }
 
-// ── Step 1: Import schema.sql ───────────────────────────────────────────────
+    echo "<p><strong>Schema:</strong> " . (file_exists(SCHEMA_PATH) ? "<span class='ok'>found</span> (" . number_format(filesize(SCHEMA_PATH)) . " bytes)" : "<span class='err'>NOT FOUND</span>") . "</p>";
 
-$schemaFile = __DIR__ . '/schema.sql';
-if (!file_exists($schemaFile)) {
-    die("ERROR: schema.sql not found at $schemaFile\n");
-}
+    if (is_dir(IMPORT_DIR)) {
+        $files = glob(IMPORT_DIR . '/*.sql');
+        $totalSize = array_sum(array_map('filesize', $files));
+        echo "<p><strong>Data files:</strong> <span class='ok'>" . count($files) . " files</span> (" . number_format($totalSize / 1024 / 1024, 1) . " MB)</p>";
+    } else {
+        echo "<p><strong>Data files:</strong> <span class='warn'>ootpimport/ not found</span></p>";
+    }
+    echo "</div>";
 
-echo "\n[1/3] Importing schema.sql...\n";
+    echo "<h2>Step 1 &mdash; Create Tables</h2>";
+    echo "<form method='post' action='?key={$k}'><input type='hidden' name='action' value='schema'>";
+    echo "<button>Install Schema</button> <span class='muted'>Creates all tables (DROP + CREATE). Safe to re-run.</span></form>";
 
-$sql = file_get_contents($schemaFile);
-// Split by statement delimiter, filtering empty
-$pdo->exec("SET FOREIGN_KEY_CHECKS=0");
+    echo "<h2>Step 2 &mdash; Import OOTP Data</h2>";
+    echo "<form method='post' action='?key={$k}'><input type='hidden' name='action' value='import'>";
+    echo "<button>Import All Data</button> <span class='muted'>Truncates then imports each table from ootpimport/</span></form>";
 
-try {
-    $pdo->exec($sql);
-    echo "  ✓ Schema imported successfully.\n";
-} catch (PDOException $e) {
-    // MySQL can't exec multiple statements via PDO::exec in some configs
-    // Fall back to statement-by-statement
-    echo "  Bulk import failed, trying statement-by-statement...\n";
+    echo "<h2>Step 3 &mdash; Performance Indexes</h2>";
+    echo "<form method='post' action='?key={$k}'><input type='hidden' name='action' value='indexes'>";
+    echo "<button style='background:#d97706'>Add Indexes</button> <span class='muted'>Adds performance indexes. Safe to re-run.</span></form>";
 
-    $statements = array_filter(
-        array_map('trim', preg_split('/;\s*\n/', $sql)),
-        fn($s) => $s && !str_starts_with($s, '--') && !str_starts_with($s, '/*')
-    );
+    echo "<h2>Step 4 &mdash; Laravel Setup</h2>";
+    echo "<form method='post' action='?key={$k}' style='display:inline'><input type='hidden' name='action' value='migrate'>";
+    echo "<button class='btn-blue'>Run Migrations</button></form> ";
+    echo "<form method='post' action='?key={$k}' style='display:inline'><input type='hidden' name='action' value='cache'>";
+    echo "<button class='btn-green'>Clear Caches</button></form>";
 
-    $success = 0;
-    $skipped = 0;
-    foreach ($statements as $stmt) {
-        try {
-            $pdo->exec($stmt);
-            $success++;
-        } catch (PDOException $e2) {
-            // Table already exists or other non-fatal error
-            if (str_contains($e2->getMessage(), 'already exists')) {
-                $skipped++;
-            } else {
-                echo "  WARNING: " . substr($e2->getMessage(), 0, 120) . "\n";
-                $skipped++;
+    echo "<h2>Or &mdash; Do Everything At Once</h2>";
+    echo "<form method='post' action='?key={$k}' onsubmit=\"return confirm('This will DROP all tables, reimport everything, run migrations, and clear caches. Continue?')\">";
+    echo "<input type='hidden' name='action' value='full'>";
+    echo "<button class='btn-purple'>Full Install (Schema + Data + Migrate + Cache)</button></form>";
+
+else:
+    // ── Run actions ──
+    try {
+        $pdo = new PDO("mysql:host={$dbHost};port={$dbPort};dbname={$dbName}", $dbUser, $dbPass, [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+        ]);
+        $pdo->exec("SET NAMES utf8mb4");
+        $pdo->exec("SET FOREIGN_KEY_CHECKS=0");
+        $pdo->exec("SET UNIQUE_CHECKS=0");
+        $pdo->exec("SET SQL_MODE='NO_AUTO_VALUE_ON_ZERO'");
+    } catch (PDOException $e) {
+        die("<p class='err'>Connection failed: " . htmlspecialchars($e->getMessage()) . "</p>");
+    }
+
+    $startTime = microtime(true);
+    $totalOk = 0;
+    $totalFail = 0;
+
+    function runSqlFile(PDO $pdo, string $path, string $label, int &$totalOk, int &$totalFail): void {
+        if (!file_exists($path)) {
+            echo "<p class='step err'>&#10007; Not found: {$label}</p>";
+            $totalFail++;
+            return;
+        }
+
+        $sizeMB = number_format(filesize($path) / 1024 / 1024, 1);
+        $sql = file_get_contents($path);
+        if ($sql === false) {
+            echo "<p class='step err'>&#10007; Could not read: {$label}</p>";
+            $totalFail++;
+            return;
+        }
+
+        $ok = 0;
+        $fail = 0;
+        $statements = preg_split('/;\s*\n/', $sql);
+
+        foreach ($statements as $stmt) {
+            $stmt = trim($stmt);
+            if ($stmt === '' || str_starts_with($stmt, '--')) continue;
+
+            try {
+                $pdo->exec($stmt);
+                $ok++;
+            } catch (PDOException $e) {
+                $fail++;
+                if ($fail <= 3) {
+                    echo "<p class='step err'>&nbsp;&nbsp;&#10007; " . htmlspecialchars(substr($e->getMessage(), 0, 120)) . "</p>";
+                }
+            }
+        }
+
+        $status = $fail === 0 ? 'ok' : 'warn';
+        echo "<p class='step {$status}'>&#10003; {$label} ({$sizeMB} MB, {$ok} ok" . ($fail ? ", {$fail} failed" : "") . ")</p>";
+        $totalOk += $ok;
+        $totalFail += $fail;
+        if (ob_get_level()) ob_flush();
+        flush();
+    }
+
+    // ── Schema ──
+    if (in_array($action, ['schema', 'full'])) {
+        echo "<h2>Installing Schema...</h2>";
+        if (ob_get_level()) ob_flush(); flush();
+        runSqlFile($pdo, SCHEMA_PATH, 'schema.sql', $totalOk, $totalFail);
+    }
+
+    // ── Data Import ──
+    if (in_array($action, ['import', 'full'])) {
+        echo "<h2>Importing Data...</h2>";
+        if (ob_get_level()) ob_flush(); flush();
+
+        if (!is_dir(IMPORT_DIR)) {
+            echo "<p class='err'>ootpimport/ directory not found at " . IMPORT_DIR . "</p>";
+        } else {
+            $files = glob(IMPORT_DIR . '/*.sql');
+            sort($files);
+            $total = count($files);
+
+            foreach ($files as $i => $file) {
+                $table = basename($file, '.sql');
+                try { $pdo->exec("TRUNCATE TABLE `{$table}`"); } catch (PDOException $e) {}
+                $num = $i + 1;
+                runSqlFile($pdo, $file, "[{$num}/{$total}] {$table}", $totalOk, $totalFail);
             }
         }
     }
-    echo "  ✓ Done. $success statements executed, $skipped skipped.\n";
-}
 
-$pdo->exec("SET FOREIGN_KEY_CHECKS=1");
+    // ── Indexes ──
+    if (in_array($action, ['indexes', 'full'])) {
+        echo "<h2>Adding Performance Indexes...</h2>";
+        if (ob_get_level()) ob_flush(); flush();
 
-// ── Step 2: Run Laravel migrations ──────────────────────────────────────────
+        $indexes = [
+            ['game_logs',                     'idx_game_logs_game_id',   'game_id'],
+            ['game_logs',                     'idx_gl_game_type',        'game_id, type'],
+            ['players_at_bat_batting_stats',  'idx_atbat_game_id',       'game_id'],
+            ['players_at_bat_batting_stats',  'idx_atbat_game_team',     'game_id, team_id'],
+            ['players_game_batting',          'idx_pgb_game_id',         'game_id'],
+            ['players_game_pitching_stats',   'idx_pgp_game_id',         'game_id'],
+            ['players_career_fielding_stats', 'idx_pcf_player_year_split','player_id, year, split_id'],
+            ['players_career_batting_stats',  'idx_pcbs_player_year_split','player_id, year, split_id'],
+            ['games',                         'idx_games_played_date',   'played, date'],
+            ['games',                         'idx_games_played_type',   'played, game_type'],
+            ['players_game_batting',          'idx_pgb_level_team',      'level_id, team_id'],
+            ['players_game_batting',          'idx_pgb_level_player',    'level_id, player_id'],
+            ['players_game_batting',          'idx_pgb_team',            'team_id'],
+            ['players_game_pitching_stats',   'idx_pgp_level_team',      'level_id, team_id'],
+            ['players_game_pitching_stats',   'idx_pgp_level_gs',        'level_id, gs'],
+            ['players_game_pitching_stats',   'idx_pgp_team',            'team_id'],
+            ['team_roster',                   'idx_tr_team_list',        'team_id, list_id'],
+            ['team_roster',                   'idx_tr_player_team',      'player_id, team_id'],
+            ['players_career_batting_stats',  'idx_pcbs_split_year_ab',  'split_id, year, ab'],
+            ['players_career_batting_stats',  'idx_pcbs_player_split',   'player_id, split_id'],
+            ['players_career_pitching_stats', 'idx_pcps_player_split',   'player_id, split_id'],
+            ['players_streak',               'idx_ps_streak_ended',      'streak_id, has_ended, value'],
+        ];
 
-echo "\n[2/3] Running Laravel migrations...\n";
-$projectRoot = realpath(__DIR__ . '/..');
-$output = [];
-$exitCode = 0;
-exec("cd " . escapeshellarg($projectRoot) . " && php artisan migrate --force 2>&1", $output, $exitCode);
-echo "  " . implode("\n  ", $output) . "\n";
-if ($exitCode !== 0) {
-    echo "  WARNING: Migration exited with code $exitCode\n";
-} else {
-    echo "  ✓ Migrations complete.\n";
-}
+        $idxOk = 0; $idxSkip = 0;
+        foreach ($indexes as [$table, $name, $cols]) {
+            try {
+                $pdo->exec("ALTER TABLE `{$table}` ADD INDEX `{$name}` ({$cols})");
+                echo "<p class='step ok'>&#10003; {$table}.{$name}</p>";
+                $idxOk++;
+            } catch (PDOException $e) {
+                if (str_contains($e->getMessage(), 'Duplicate key name')) {
+                    $idxSkip++;
+                } else {
+                    echo "<p class='step err'>&#10007; {$table}.{$name}: " . htmlspecialchars(substr($e->getMessage(), 0, 100)) . "</p>";
+                }
+            }
+        }
+        echo "<p class='ok'>&#10003; Indexes: {$idxOk} added, {$idxSkip} already existed</p>";
+        if (ob_get_level()) ob_flush(); flush();
+    }
 
-// ── Step 3: Check table count ───────────────────────────────────────────────
+    // ── Migrations ──
+    if (in_array($action, ['migrate', 'full'])) {
+        echo "<h2>Running Migrations...</h2>";
+        if (ob_get_level()) ob_flush(); flush();
 
-echo "\n[3/3] Verifying...\n";
-$tables = $pdo->query("SHOW TABLES")->fetchAll(PDO::FETCH_COLUMN);
-echo "  ✓ $db has " . count($tables) . " tables.\n";
+        $base = LARAVEL_ROOT;
+        $output = [];
+        exec("cd " . escapeshellarg($base) . " && php artisan migrate --force 2>&1", $output, $code);
+        foreach ($output as $line) {
+            $cls = str_contains($line, 'DONE') || str_contains($line, 'Nothing') ? 'ok' : 'step';
+            echo "<p class='{$cls}'>" . htmlspecialchars($line) . "</p>";
+        }
+        echo $code === 0
+            ? "<p class='ok'>&#10003; Migrations complete</p>"
+            : "<p class='err'>&#10007; Migration error (code {$code})</p>";
+    }
 
-// Check for key tables
-$required = ['teams', 'players', 'games', 'settings', 'users'];
-$missing = array_diff($required, $tables);
-if ($missing) {
-    echo "  WARNING: Missing tables: " . implode(', ', $missing) . "\n";
-} else {
-    echo "  ✓ All required tables present.\n";
-}
+    // ── Cache ──
+    if (in_array($action, ['cache', 'full'])) {
+        echo "<h2>Clearing Caches...</h2>";
+        if (ob_get_level()) ob_flush(); flush();
 
-// Check if tables have data
-$teamCount = $pdo->query("SELECT COUNT(*) FROM teams")->fetchColumn();
-echo "\n  Teams in database: $teamCount\n";
-if ((int)$teamCount === 0) {
-    echo "  NOTE: Tables are empty. You need to import your OOTP database export.\n";
-    echo "  Upload your SQL dump and import it via cPanel → phpMyAdmin or:\n";
-    echo "    mysql -u $user -p $db < your_ootp_export.sql\n";
-}
+        $base = LARAVEL_ROOT;
+        foreach (['config:cache', 'route:cache', 'view:cache'] as $cmd) {
+            $out = [];
+            exec("cd " . escapeshellarg($base) . " && php artisan {$cmd} 2>&1", $out, $code);
+            echo "<p class='" . ($code === 0 ? 'ok' : 'err') . "'>" . ($code === 0 ? '&#10003;' : '&#10007;') . " {$cmd}</p>";
+        }
+    }
 
-echo "\n✓ Install complete.\n";
+    $pdo->exec("SET FOREIGN_KEY_CHECKS=1");
+    $pdo->exec("SET UNIQUE_CHECKS=1");
+
+    $elapsed = round(microtime(true) - $startTime, 1);
+    echo "<div class='box'>";
+    echo "<p class='ok'><strong>Done!</strong> {$totalOk} statements OK";
+    if ($totalFail) echo ", <span class='err'>{$totalFail} failed</span>";
+    echo " &mdash; {$elapsed}s</p>";
+    echo "<p><a href='?key={$k}'>&larr; Back to installer</a></p>";
+    echo "</div>";
+
+endif;
+?>
+</body></html>
