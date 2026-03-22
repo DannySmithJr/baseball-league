@@ -61,6 +61,20 @@ class DeployLineups extends Command
             }
         }
 
+        // Rebuild performance indexes (OOTP imports drop/recreate tables)
+        $indexes = [
+            'ALTER TABLE players_game_batting ADD INDEX idx_pgb_player (player_id)',
+            'ALTER TABLE players_game_pitching_stats ADD INDEX idx_pgps_player (player_id)',
+            'ALTER TABLE players_scouted_ratings ADD INDEX idx_psr_player (player_id)',
+            'ALTER TABLE players_contract ADD INDEX idx_pc_player (player_id)',
+            'ALTER TABLE players_career_batting_stats ADD INDEX idx_pcbs_team_split_year (team_id, split_id, year)',
+            'ALTER TABLE players_career_pitching_stats ADD INDEX idx_pcps_team_split_year (team_id, split_id, year)',
+        ];
+        foreach ($indexes as $sql) {
+            try { DB::statement($sql); } catch (\Throwable $e) { /* index may already exist */ }
+        }
+        $this->info('Rebuilt performance indexes');
+
         // Import lineup/staff files
         foreach (['team_starting_lineups.sql', 'team_pitching_staff.sql'] as $name) {
             $path = base_path("database/migrations/{$name}");
