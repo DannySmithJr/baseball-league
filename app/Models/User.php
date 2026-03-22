@@ -17,6 +17,15 @@ class User extends Authenticatable
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
 
+    protected static function booted(): void
+    {
+        static::deleting(function (User $user) {
+            if ($user->id === 1) {
+                throw new \RuntimeException('The founding admin account cannot be deleted.');
+            }
+        });
+    }
+
     public function isAdmin(): bool
     {
         return $this->role === 'admin';

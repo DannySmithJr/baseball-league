@@ -1,0 +1,623 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+<title>Opponent Pitching Stats Report - Split: None</title>
+<meta name="content-language" content="en-us">
+<meta name="content-type" content="text/html;charset=UTF-8">
+<meta charset="utf-8">
+<meta name="robots" content="noindex, nofollow">
+<link rel="stylesheet" type="text/css" href="../styles.css">
+<script src="../scripts/sorttable.js"></script>
+
+
+<script language="javascript" type="text/javascript">
+
+function go(url,which)
+{
+	if (which==1)
+	{
+		box = document.forms[0].set;
+	}
+	else if (which==2)
+	{
+		box = document.forms[0].split;
+	}
+	if (box)
+	{
+		rExp = /TOKEN/gi;
+		x = box.options[box.selectedIndex].value;
+		if (x) location.href = url.replace(rExp, x);
+	}
+}
+
+</script>
+</head>
+<body class="ext_bg">
+
+<table cellspacing="0" cellpadding="0" align="center" width="968px">
+
+	<!-- OOTP IGNORE START TEAM HEADER -->
+	<tr>
+		<td>
+			<table border="0" width="968px" cellspacing="0" cellpadding="0" style="background-image:url(../images/report_header.jpg); background-repeat:no-repeat;">
+				<tr style="height:160px;">
+					<td align="left" valign="top" style="padding:4px 0px 0px 4px;"><a href="../leagues/league_107_home.html"><img src="../images/league_logos/western_carolinas_league.png" border="0" title="Western Carolinas League"></a></td>
+					<td valign="top">
+						<table width="648px" border="0" cellspacing="0" cellpadding="0">
+							<tr>
+								<td align="center" valign="top" style="padding-top:14px;">
+									<div class="reptitle">ANDERSON SENATORS (A)</div>
+<div class="repsubtitle">OPPONENT PITCHING STATS REPORT - SPLIT: NONE</div>
+
+									<div style="text-align:center; color:#FFFFFF; padding-top:4px;">07/06/1970</div>
+								</td>
+								<td><img src="../images/pixel.gif" width="1" height="138"></td>
+							</tr>
+							<tr>
+								<td align="center" valign="top" class="menu">
+									<a href="../index.html" class="menu">BNN Index</a>  |
+									<a href="../leagues/league_107_home.html" class="menu">WCRS</a>  |
+									<a href="../leagues/league_107_scores.html" class="menu">SCORES</a>  |
+									<a href="../leagues/league_107_standings.html" class="menu">STANDINGS</a>  |
+									<a href="../leagues/league_107_stats.html" class="menu">STATS</a>  |
+									<a href="../leagues/league_107_teams.html" class="menu">TEAMS</a>  |
+									<a href="../leagues/league_107_players.html" class="menu">PLAYERS</a>  |
+									<a href="../leagues/league_107_transactions_0_0.html" class="menu">TRANSACTIONS</a>  |
+									<a href="../history/league_107_index.html" class="menu">HISTORY</a>
+								</td>
+								<td><img src="../images/pixel.gif" width="1" height="22"></td>
+							</tr>
+						</table>
+					</td>
+					<td align="right" valign="top" style="padding:4px 4px 0px 0px;"><a href="../teams/team_71.html"><img src="../images/team_logos/anderson_senators.png" border="0" title="Anderson Senators (A)"></a></td>
+				</tr>
+			</table>
+		</td>
+	</tr>
+<!-- OOTP IGNORE END TEAM HEADER -->
+
+	<tr>
+	<td>
+		<form>
+			<table cellspacing="0" cellpadding="0" width="988px" style="margin-bottom:8px;">
+				<tr>
+					<td width="528px" class="boxtitle"><!--xOPPONENT PITCHING STATS REPORT - SPLIT: NONEx--></td>
+					<td width="100px" class="boxsubtitle" align="right" style="padding-top:6px;">Select Set:</td>
+					<td width="120px" class="boxtitle" style="padding-top:6px;">
+						<select name="set" onChange="javascript:go('../teams/team_71_pitching_stats_TOKEN_1.html',1)">
+						<option value="0">Basic</option><option value="1">Expanded</option><option value="2">Expanded 2</option><option value="3" selected="1">Opponent</option>
+						</select>
+					</td>
+					<td width="60px" class="boxsubtitle" align="right" style="padding-top:6px;">Split:</td>
+					<td width="140px" class="boxtitle" style="padding-top:6px;">
+						<select name="split" onChange="javascript:go('../teams/team_71_pitching_stats_3_TOKEN.html',2)">
+						<option value="1" selected="1">None</option><option value="2">Versus Left</option><option value="3">Versus Right</option><option value="4">This Week</option><option value="5">Last Week</option><option value="6">January</option><option value="7">February</option><option value="8">March</option><option value="9">April</option><option value="10">May</option><option value="11">June</option><option value="12">July</option><option value="13">August</option><option value="14">September</option><option value="15">October</option><option value="16">November</option><option value="17">December</option><option value="18">All-Star Game</option><option value="19">Spring Training</option><option value="20">Exhibition</option><option value="21">Postseason</option><option value="22">Last Year</option><option value="23">2 Years Ago</option><option value="24">Career</option><option value="25">Home</option><option value="26">Road</option><option value="27">Grass</option><option value="28">Turf</option><option value="29">Day</option><option value="30">Night</option><option value="31">As Starter</option><option value="32">As Reliever / Substitution</option><option value="75">Low Leverage</option><option value="76">Medium Leverage</option><option value="77">High Leverage</option>
+						</select>
+					</td>
+				</tr>
+			</table>
+		</form>
+	</td>
+</tr>
+<tr>
+	<td>		
+		<table class="stats sortable" cellspacing="0" cellpadding="0" width="968px">	
+			<tr>
+				<th class="hsc dl" style="width:180px;">Name</th>
+				<th class="hsn dr">G</th>
+				<th class="hsn dr">AB</th>
+				<th class="hsn dr">R</th>
+				<th class="hsn dr">H</th>
+				<th class="hsn dr">2B</th>
+				<th class="hsn dr">3B</th>
+				<th class="hsn dr">HR</th>
+				<th class="hsn dr">TB</th>
+				<th class="hsn dr">BB</th>
+				<th class="hsn dr">K</th>
+				<th class="hsn dr">SB</th>
+				<th class="hsn dr">CS</th>
+				<th class="hsn dr">AVG</th>
+				<th class="hsn dr">OBP</th>
+				<th class="hsn dr">SLG</th>
+				<th class="hsn dr">OPS</th>
+			</tr>
+	<tr>
+		<td class="dl"><a href="../players/player_14200.html">Fred Williams</a> RP</td>
+		<td class="dr">3</td>
+		<td class="dr">15</td>
+		<td class="dr">0</td>
+		<td class="dr">3</td>
+		<td class="dr">0</td>
+		<td class="dr">0</td>
+		<td class="dr">0</td>
+		<td class="dr">3</td>
+		<td class="dr">3</td>
+		<td class="dr">5</td>
+		<td class="dr">0</td>
+		<td class="dr">0</td>
+		<td class="dr">.200</td>
+		<td class="dr">.333</td>
+		<td class="dr">.200</td>
+		<td class="dr">.533</td>
+	</tr>
+	<tr>
+		<td class="dl"><a href="../players/player_14041.html">Edward Szado</a> SP</td>
+		<td class="dr">4</td>
+		<td class="dr">94</td>
+		<td class="dr">7</td>
+		<td class="dr">12</td>
+		<td class="dr">3</td>
+		<td class="dr">0</td>
+		<td class="dr">0</td>
+		<td class="dr">15</td>
+		<td class="dr">17</td>
+		<td class="dr">26</td>
+		<td class="dr">1</td>
+		<td class="dr">0</td>
+		<td class="dr">.128</td>
+		<td class="dr">.268</td>
+		<td class="dr">.160</td>
+		<td class="dr">.427</td>
+	</tr>
+	<tr>
+		<td class="dl"><a href="../players/player_5927.html">Jim Miles</a> SP</td>
+		<td class="dr">7</td>
+		<td class="dr">164</td>
+		<td class="dr">12</td>
+		<td class="dr">33</td>
+		<td class="dr">7</td>
+		<td class="dr">1</td>
+		<td class="dr">0</td>
+		<td class="dr">42</td>
+		<td class="dr">16</td>
+		<td class="dr">40</td>
+		<td class="dr">3</td>
+		<td class="dr">2</td>
+		<td class="dr">.201</td>
+		<td class="dr">.279</td>
+		<td class="dr">.256</td>
+		<td class="dr">.535</td>
+	</tr>
+	<tr>
+		<td class="dl"><a href="../players/player_13979.html">Sylvester Swindler</a> RP</td>
+		<td class="dr">9</td>
+		<td class="dr">32</td>
+		<td class="dr">2</td>
+		<td class="dr">7</td>
+		<td class="dr">1</td>
+		<td class="dr">2</td>
+		<td class="dr">0</td>
+		<td class="dr">12</td>
+		<td class="dr">3</td>
+		<td class="dr">13</td>
+		<td class="dr">0</td>
+		<td class="dr">1</td>
+		<td class="dr">.219</td>
+		<td class="dr">.278</td>
+		<td class="dr">.375</td>
+		<td class="dr">.653</td>
+	</tr>
+	<tr>
+		<td class="dl"><a href="../players/player_12687.html">Kim Hillstrom</a> RP</td>
+		<td class="dr">9</td>
+		<td class="dr">51</td>
+		<td class="dr">7</td>
+		<td class="dr">11</td>
+		<td class="dr">2</td>
+		<td class="dr">1</td>
+		<td class="dr">2</td>
+		<td class="dr">21</td>
+		<td class="dr">6</td>
+		<td class="dr">12</td>
+		<td class="dr">1</td>
+		<td class="dr">0</td>
+		<td class="dr">.216</td>
+		<td class="dr">.310</td>
+		<td class="dr">.412</td>
+		<td class="dr">.722</td>
+	</tr>
+	<tr>
+		<td class="dl"><a href="../players/player_14241.html">Michael Whitson</a> RP</td>
+		<td class="dr">5</td>
+		<td class="dr">122</td>
+		<td class="dr">8</td>
+		<td class="dr">26</td>
+		<td class="dr">5</td>
+		<td class="dr">1</td>
+		<td class="dr">0</td>
+		<td class="dr">33</td>
+		<td class="dr">18</td>
+		<td class="dr">32</td>
+		<td class="dr">5</td>
+		<td class="dr">0</td>
+		<td class="dr">.213</td>
+		<td class="dr">.329</td>
+		<td class="dr">.270</td>
+		<td class="dr">.599</td>
+	</tr>
+	<tr>
+		<td class="dl"><a href="../players/player_12807.html">Rick Kemp</a> SP</td>
+		<td class="dr">6</td>
+		<td class="dr">150</td>
+		<td class="dr">11</td>
+		<td class="dr">39</td>
+		<td class="dr">6</td>
+		<td class="dr">0</td>
+		<td class="dr">3</td>
+		<td class="dr">54</td>
+		<td class="dr">20</td>
+		<td class="dr">37</td>
+		<td class="dr">7</td>
+		<td class="dr">1</td>
+		<td class="dr">.260</td>
+		<td class="dr">.349</td>
+		<td class="dr">.360</td>
+		<td class="dr">.709</td>
+	</tr>
+	<tr>
+		<td class="dl"><a href="../players/player_13928.html">Wallace Smallwood</a> SP</td>
+		<td class="dr">1</td>
+		<td class="dr">30</td>
+		<td class="dr">2</td>
+		<td class="dr">7</td>
+		<td class="dr">3</td>
+		<td class="dr">0</td>
+		<td class="dr">0</td>
+		<td class="dr">10</td>
+		<td class="dr">3</td>
+		<td class="dr">6</td>
+		<td class="dr">0</td>
+		<td class="dr">0</td>
+		<td class="dr">.233</td>
+		<td class="dr">.303</td>
+		<td class="dr">.333</td>
+		<td class="dr">.636</td>
+	</tr>
+	<tr>
+		<td class="dl"><a href="../players/player_14096.html">George Valesente</a> RP</td>
+		<td class="dr">6</td>
+		<td class="dr">40</td>
+		<td class="dr">3</td>
+		<td class="dr">8</td>
+		<td class="dr">2</td>
+		<td class="dr">0</td>
+		<td class="dr">0</td>
+		<td class="dr">10</td>
+		<td class="dr">4</td>
+		<td class="dr">5</td>
+		<td class="dr">1</td>
+		<td class="dr">2</td>
+		<td class="dr">.200</td>
+		<td class="dr">.273</td>
+		<td class="dr">.250</td>
+		<td class="dr">.523</td>
+	</tr>
+	<tr>
+		<td class="dl"><a href="../players/player_12145.html">Gary Carter</a> SP</td>
+		<td class="dr">8</td>
+		<td class="dr">95</td>
+		<td class="dr">9</td>
+		<td class="dr">23</td>
+		<td class="dr">2</td>
+		<td class="dr">1</td>
+		<td class="dr">2</td>
+		<td class="dr">33</td>
+		<td class="dr">8</td>
+		<td class="dr">19</td>
+		<td class="dr">1</td>
+		<td class="dr">1</td>
+		<td class="dr">.242</td>
+		<td class="dr">.301</td>
+		<td class="dr">.347</td>
+		<td class="dr">.648</td>
+	</tr>
+	<tr>
+		<td class="dl"><a href="../players/player_13584.html">James Redmon</a> SP</td>
+		<td class="dr">9</td>
+		<td class="dr">90</td>
+		<td class="dr">10</td>
+		<td class="dr">24</td>
+		<td class="dr">5</td>
+		<td class="dr">1</td>
+		<td class="dr">0</td>
+		<td class="dr">31</td>
+		<td class="dr">17</td>
+		<td class="dr">13</td>
+		<td class="dr">3</td>
+		<td class="dr">0</td>
+		<td class="dr">.267</td>
+		<td class="dr">.380</td>
+		<td class="dr">.344</td>
+		<td class="dr">.724</td>
+	</tr>
+	<tr>
+		<td class="dl"><a href="../players/player_12894.html">Edwin Layman</a> RP</td>
+		<td class="dr">13</td>
+		<td class="dr">108</td>
+		<td class="dr">12</td>
+		<td class="dr">28</td>
+		<td class="dr">5</td>
+		<td class="dr">1</td>
+		<td class="dr">2</td>
+		<td class="dr">41</td>
+		<td class="dr">10</td>
+		<td class="dr">36</td>
+		<td class="dr">1</td>
+		<td class="dr">0</td>
+		<td class="dr">.259</td>
+		<td class="dr">.322</td>
+		<td class="dr">.380</td>
+		<td class="dr">.702</td>
+	</tr>
+	<tr>
+		<td class="dl"><a href="../players/player_6806.html">Rick Waits</a> SP</td>
+		<td class="dr">14</td>
+		<td class="dr">326</td>
+		<td class="dr">44</td>
+		<td class="dr">80</td>
+		<td class="dr">18</td>
+		<td class="dr">0</td>
+		<td class="dr">8</td>
+		<td class="dr">122</td>
+		<td class="dr">51</td>
+		<td class="dr">87</td>
+		<td class="dr">4</td>
+		<td class="dr">3</td>
+		<td class="dr">.245</td>
+		<td class="dr">.353</td>
+		<td class="dr">.374</td>
+		<td class="dr">.727</td>
+	</tr>
+	<tr>
+		<td class="dl"><a href="../players/player_11806.html">Dick Baldwin</a> SP</td>
+		<td class="dr">14</td>
+		<td class="dr">137</td>
+		<td class="dr">18</td>
+		<td class="dr">40</td>
+		<td class="dr">2</td>
+		<td class="dr">3</td>
+		<td class="dr">2</td>
+		<td class="dr">54</td>
+		<td class="dr">15</td>
+		<td class="dr">26</td>
+		<td class="dr">0</td>
+		<td class="dr">0</td>
+		<td class="dr">.292</td>
+		<td class="dr">.359</td>
+		<td class="dr">.394</td>
+		<td class="dr">.753</td>
+	</tr>
+	<tr>
+		<td class="dl"><a href="../players/player_13311.html">Robert Ormond</a> SP</td>
+		<td class="dr">14</td>
+		<td class="dr">336</td>
+		<td class="dr">54</td>
+		<td class="dr">111</td>
+		<td class="dr">13</td>
+		<td class="dr">1</td>
+		<td class="dr">5</td>
+		<td class="dr">141</td>
+		<td class="dr">28</td>
+		<td class="dr">68</td>
+		<td class="dr">8</td>
+		<td class="dr">1</td>
+		<td class="dr">.330</td>
+		<td class="dr">.376</td>
+		<td class="dr">.420</td>
+		<td class="dr">.795</td>
+	</tr>
+	<tr>
+		<td class="dl"><a href="../players/player_13876.html">Michael Slade</a> SP</td>
+		<td class="dr">5</td>
+		<td class="dr">112</td>
+		<td class="dr">20</td>
+		<td class="dr">34</td>
+		<td class="dr">3</td>
+		<td class="dr">0</td>
+		<td class="dr">2</td>
+		<td class="dr">43</td>
+		<td class="dr">23</td>
+		<td class="dr">21</td>
+		<td class="dr">3</td>
+		<td class="dr">0</td>
+		<td class="dr">.304</td>
+		<td class="dr">.436</td>
+		<td class="dr">.384</td>
+		<td class="dr">.820</td>
+	</tr>
+	<tr>
+		<td class="dl"><a href="../players/player_13625.html">Mark Scally</a> RP</td>
+		<td class="dr">4</td>
+		<td class="dr">98</td>
+		<td class="dr">14</td>
+		<td class="dr">31</td>
+		<td class="dr">6</td>
+		<td class="dr">0</td>
+		<td class="dr">2</td>
+		<td class="dr">43</td>
+		<td class="dr">15</td>
+		<td class="dr">22</td>
+		<td class="dr">3</td>
+		<td class="dr">0</td>
+		<td class="dr">.316</td>
+		<td class="dr">.404</td>
+		<td class="dr">.439</td>
+		<td class="dr">.842</td>
+	</tr>
+	<tr>
+		<td class="dl"><a href="../players/player_14286.html">Woody Woodson</a> SP</td>
+		<td class="dr">1</td>
+		<td class="dr">21</td>
+		<td class="dr">6</td>
+		<td class="dr">7</td>
+		<td class="dr">1</td>
+		<td class="dr">0</td>
+		<td class="dr">0</td>
+		<td class="dr">8</td>
+		<td class="dr">7</td>
+		<td class="dr">2</td>
+		<td class="dr">0</td>
+		<td class="dr">0</td>
+		<td class="dr">.333</td>
+		<td class="dr">.483</td>
+		<td class="dr">.381</td>
+		<td class="dr">.864</td>
+	</tr>
+	<tr>
+		<td class="dl"><a href="../players/player_13661.html">Doug Ritter</a> RP</td>
+		<td class="dr">28</td>
+		<td class="dr">133</td>
+		<td class="dr">30</td>
+		<td class="dr">43</td>
+		<td class="dr">6</td>
+		<td class="dr">3</td>
+		<td class="dr">2</td>
+		<td class="dr">61</td>
+		<td class="dr">20</td>
+		<td class="dr">26</td>
+		<td class="dr">3</td>
+		<td class="dr">0</td>
+		<td class="dr">.323</td>
+		<td class="dr">.410</td>
+		<td class="dr">.459</td>
+		<td class="dr">.869</td>
+	</tr>
+	<tr>
+		<td class="dl"><a href="../players/player_12788.html">James Keenan</a> SP</td>
+		<td class="dr">3</td>
+		<td class="dr">67</td>
+		<td class="dr">12</td>
+		<td class="dr">17</td>
+		<td class="dr">2</td>
+		<td class="dr">2</td>
+		<td class="dr">2</td>
+		<td class="dr">29</td>
+		<td class="dr">10</td>
+		<td class="dr">18</td>
+		<td class="dr">2</td>
+		<td class="dr">1</td>
+		<td class="dr">.254</td>
+		<td class="dr">.351</td>
+		<td class="dr">.433</td>
+		<td class="dr">.783</td>
+	</tr>
+	<tr>
+		<td class="dl"><a href="../players/player_13742.html">Robert Shutts</a> RP</td>
+		<td class="dr">8</td>
+		<td class="dr">46</td>
+		<td class="dr">8</td>
+		<td class="dr">14</td>
+		<td class="dr">2</td>
+		<td class="dr">2</td>
+		<td class="dr">1</td>
+		<td class="dr">23</td>
+		<td class="dr">9</td>
+		<td class="dr">15</td>
+		<td class="dr">0</td>
+		<td class="dr">1</td>
+		<td class="dr">.304</td>
+		<td class="dr">.429</td>
+		<td class="dr">.500</td>
+		<td class="dr">.929</td>
+	</tr>
+	<tr>
+		<td class="dl"><a href="../players/player_11782.html">Jimmy Blackmon</a> RP</td>
+		<td class="dr">32</td>
+		<td class="dr">200</td>
+		<td class="dr">42</td>
+		<td class="dr">58</td>
+		<td class="dr">10</td>
+		<td class="dr">2</td>
+		<td class="dr">7</td>
+		<td class="dr">93</td>
+		<td class="dr">40</td>
+		<td class="dr">50</td>
+		<td class="dr">1</td>
+		<td class="dr">0</td>
+		<td class="dr">.290</td>
+		<td class="dr">.416</td>
+		<td class="dr">.465</td>
+		<td class="dr">.881</td>
+	</tr>
+	<tr>
+		<td class="dl"><a href="../players/player_13484.html">John Parker</a> SP</td>
+		<td class="dr">2</td>
+		<td class="dr">35</td>
+		<td class="dr">8</td>
+		<td class="dr">9</td>
+		<td class="dr">1</td>
+		<td class="dr">1</td>
+		<td class="dr">2</td>
+		<td class="dr">18</td>
+		<td class="dr">8</td>
+		<td class="dr">10</td>
+		<td class="dr">0</td>
+		<td class="dr">1</td>
+		<td class="dr">.257</td>
+		<td class="dr">.386</td>
+		<td class="dr">.514</td>
+		<td class="dr">.901</td>
+	</tr>
+	<tr>
+		<td class="dl"><a href="../players/player_12150.html">John Dennington</a> RP</td>
+		<td class="dr">5</td>
+		<td class="dr">28</td>
+		<td class="dr">6</td>
+		<td class="dr">10</td>
+		<td class="dr">1</td>
+		<td class="dr">0</td>
+		<td class="dr">1</td>
+		<td class="dr">14</td>
+		<td class="dr">3</td>
+		<td class="dr">6</td>
+		<td class="dr">0</td>
+		<td class="dr">0</td>
+		<td class="dr">.357</td>
+		<td class="dr">.438</td>
+		<td class="dr">.500</td>
+		<td class="dr">.938</td>
+	</tr>
+	<tr>
+		<td class="dl"><a href="../players/player_3917.html">Charlie Walters</a> RP</td>
+		<td class="dr">5</td>
+		<td class="dr">34</td>
+		<td class="dr">8</td>
+		<td class="dr">13</td>
+		<td class="dr">3</td>
+		<td class="dr">2</td>
+		<td class="dr">0</td>
+		<td class="dr">20</td>
+		<td class="dr">2</td>
+		<td class="dr">6</td>
+		<td class="dr">1</td>
+		<td class="dr">0</td>
+		<td class="dr">.382</td>
+		<td class="dr">.417</td>
+		<td class="dr">.588</td>
+		<td class="dr">1.005</td>
+	</tr>
+		</table>
+	</td>
+</tr>
+	
+	<tr>
+		<td style="padding-top:8px;"><!-- OOTP IGNORE START PAGE FOOTER --><img src="../images/bnn_bottom_bar.jpg" border="0"><!-- OOTP IGNORE END PAGE FOOTER --></td>
+
+	</tr>
+	
+</table>
+
+<!-- OOTP IGNORE START PAGE BOTTOM -->
+<table cellspacing="0" cellpadding="0" align="center" width="968px">
+	
+	<tr>
+		<td style="padding-top:2px; font-size:11px; text-align:center;">
+			Sunday, March 22nd , 2026 - OOTP Baseball 27.1 Build 41
+		</td>
+	</tr>	
+</table>
+<!-- OOTP IGNORE END PAGE BOTTOM -->
+
+
+</body>
+</html>

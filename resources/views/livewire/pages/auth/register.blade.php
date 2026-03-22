@@ -28,6 +28,11 @@ new #[Layout('layouts.guest')] class extends Component
 
         $validated['password'] = Hash::make($validated['password']);
 
+        // First registered user becomes admin automatically
+        if (User::count() === 0) {
+            $validated['role'] = 'admin';
+        }
+
         event(new Registered($user = User::create($validated)));
 
         Auth::login($user);
