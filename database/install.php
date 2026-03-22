@@ -11,10 +11,16 @@ error_reporting(E_ALL);
  */
 
 define('INSTALL_KEY', 'smlb2026install');
-define('LARAVEL_ROOT', '/home/forge/smlb.one/current');
+
+// Auto-detect Laravel root whether accessed from database/ or public/
+if (basename(__DIR__) === 'database') {
+    define('LARAVEL_ROOT', dirname(__DIR__));
+} else {
+    define('LARAVEL_ROOT', dirname(__DIR__));
+}
 define('ENV_PATH',    LARAVEL_ROOT . '/.env');
-define('SCHEMA_PATH', __DIR__ . '/schema.sql');
-define('IMPORT_DIR',  __DIR__);
+define('SCHEMA_PATH', LARAVEL_ROOT . '/database/schema.sql');
+define('IMPORT_DIR',  LARAVEL_ROOT . '/database/ootpimport');
 
 if (($_GET['key'] ?? '') !== INSTALL_KEY) {
     http_response_code(403);
