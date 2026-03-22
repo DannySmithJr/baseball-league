@@ -121,24 +121,28 @@ class TeamController extends Controller
         }
 
         // Starting lineups (vs RHP / vs LHP) from parsed almanac data
-        $lineupsRaw = DB::table('team_starting_lineups as tsl')
-            ->join('players as p', 'p.player_id', '=', 'tsl.player_id')
-            ->where('tsl.team_id', $id)
-            ->select('tsl.vs', 'tsl.slot', 'tsl.player_id', 'tsl.bats', 'tsl.position',
-                     'p.first_name', 'p.last_name')
-            ->orderBy('tsl.vs')->orderBy('tsl.slot')
-            ->get();
+        try {
+            $lineupsRaw = DB::table('team_starting_lineups as tsl')
+                ->join('players as p', 'p.player_id', '=', 'tsl.player_id')
+                ->where('tsl.team_id', $id)
+                ->select('tsl.vs', 'tsl.slot', 'tsl.player_id', 'tsl.bats', 'tsl.position',
+                         'p.first_name', 'p.last_name')
+                ->orderBy('tsl.vs')->orderBy('tsl.slot')
+                ->get();
+        } catch (\Exception $e) { $lineupsRaw = collect(); }
         $lineups = ['rhp' => $lineupsRaw->where('vs', 'rhp')->values(),
                      'lhp' => $lineupsRaw->where('vs', 'lhp')->values()];
 
         // Pitching staff from parsed almanac data
-        $pitchingStaff = DB::table('team_pitching_staff as tps')
-            ->join('players as p', 'p.player_id', '=', 'tps.player_id')
-            ->where('tps.team_id', $id)
-            ->select('tps.player_id', 'tps.role', 'tps.throws', 'tps.sort_order',
-                     'p.first_name', 'p.last_name')
-            ->orderBy('tps.sort_order')
-            ->get();
+        try {
+            $pitchingStaff = DB::table('team_pitching_staff as tps')
+                ->join('players as p', 'p.player_id', '=', 'tps.player_id')
+                ->where('tps.team_id', $id)
+                ->select('tps.player_id', 'tps.role', 'tps.throws', 'tps.sort_order',
+                         'p.first_name', 'p.last_name')
+                ->orderBy('tps.sort_order')
+                ->get();
+        } catch (\Exception $e) { $pitchingStaff = collect(); }
 
         // Group roster by position group
         $roleLabels = [

@@ -1217,11 +1217,15 @@ class OotpService
 
         // Collect all lineup player IDs
         $lineupPlayers = []; // team_id => [player_ids]
-        foreach ($teamHandMap as $teamId => $vs) {
-            $players = DB::table('team_starting_lineups')
-                ->where('team_id', $teamId)->where('vs', $vs)
-                ->pluck('player_id')->toArray();
-            if (!empty($players)) $lineupPlayers[$teamId] = $players;
+        try {
+            foreach ($teamHandMap as $teamId => $vs) {
+                $players = DB::table('team_starting_lineups')
+                    ->where('team_id', $teamId)->where('vs', $vs)
+                    ->pluck('player_id')->toArray();
+                if (!empty($players)) $lineupPlayers[$teamId] = $players;
+            }
+        } catch (\Exception $e) {
+            return []; // table doesn't exist yet
         }
 
         if (empty($lineupPlayers)) return [];
