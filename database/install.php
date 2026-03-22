@@ -122,6 +122,10 @@ if (!$action):
     echo "<form method='post' action='?key={$k}' style='display:inline'><input type='hidden' name='action' value='cache'>";
     echo "<button class='btn-green'>Clear Caches</button></form>";
 
+    echo "<h2>Step 5 &mdash; Parse Lineups from Reports</h2>";
+    echo "<form method='post' action='?key={$k}'><input type='hidden' name='action' value='lineups'>";
+    echo "<button style='background:#0891b2'>Parse &amp; Import Lineups</button> <span class='muted'>Creates tables, parses public/reports/ HTML, imports lineup &amp; pitching staff data.</span></form>";
+
     echo "<h2>Or &mdash; Do Everything At Once</h2>";
     echo "<form method='post' action='?key={$k}' onsubmit=\"return confirm('This will DROP all tables, reimport everything, run migrations, and clear caches. Continue?')\">";
     echo "<input type='hidden' name='action' value='full'>";
@@ -318,6 +322,85 @@ else:
             exec("cd " . escapeshellarg($base) . " && php artisan {$cmd} 2>&1", $out, $code);
             echo "<p class='" . ($code === 0 ? 'ok' : 'err') . "'>" . ($code === 0 ? '&#10003;' : '&#10007;') . " {$cmd}</p>";
         }
+    }
+
+    // ── Parse Lineups ──
+    if ($action === 'lineups') {
+        echo "<h2>Parsing Lineups &amp; Pitching Staff...</h2>";
+        if (ob_get_level()) ob_flush(); flush();
+
+        // Create tables if missing
+        $pdo->exec("CREATE TABLE IF NOT EXISTS `team_starting_lineups` (
+            `team_id` int DEFAULT NULL, `vs` varchar(3) DEFAULT NULL, `slot` smallint DEFAULT NULL,
+            `player_id` int DEFAULT NULL, `bats` varchar(1) DEFAULT NULL, `position` varchar(4) DEFAULT NULL
+        ) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+        $pdo->exec("CREATE TABLE IF NOT EXISTS `team_pitching_staff` (
+            `team_id` int DEFAULT NULL, `player_id` int DEFAULT NULL, `role` varchar(20) DEFAULT NULL,
+            `throws` varchar(1) DEFAULT NULL, `sort_order` smallint DEFAULT NULL
+        ) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+        echo "<p class='ok'>&#10003; Tables created/verified</p>";
+
+        // Parse HTML reports
+        $reportsDir = LARAVEL_ROOT . '/public/reports/teams';
+        if (!is_dir($reportsDir)) {
+            echo "<p class='err'>&#10007; Reports directory not found: public/reports/teams/</p>";
+        } else {
+            $files = glob($reportsDir . '/team_[0-9]*.html');
+            $files = array_filter($files, fn($f) => preg_match('/team_\d+\.html$/', basename($f)));
+            echo "<p class='step'>Found " . count($files) . " team files</p>";
+
+            $lineupRows = [];
+            $staffRows  = [];
+
+            foreach ($files as $file) {
+                if (!preg_match('/team_(\d+)\.html$/', basename($file), $m)) continue;
+                $teamId = (int)$m[1];
+                $html = file_get_contents($file);
+
+                // Lineups
+                foreach (['RHP' => 'rhp', 'LHP' => 'lhp'] as $label => $vs) {
+                    $pattern = '/LINEUP VS ' . $label . '<\/th>.*?<\/table>\s*<table[^>]*>(.*?)<\/table>/si';
+                    if (!preg_match($pattern, $html, $tm)) continue;
+                    preg_match_all('/<tr>\s*<td[^>]*>(\d+)<\/td>\s*<td[^>]*>([^<]*)<\/td>\s*<td[^>]*><a href="[^"]*player_(\d*)\.[^"]*">([^<]*)<\/a><\/td>\s*<td[^>]*>([^<]*)<\/td>/si', $tm[1], $matches, PREG_SET_ORDER);
+                    foreach ($matches as $row) {
+                        $playerId = (int)$row[3];
+                        if ($playerId === 0 || trim($row[5]) === '') continue;
+                        $lineupRows[] = "({$teamId},'" . addslashes($vs) . "'," . (int)$row[1] . ",{$playerId},'" . addslashes(trim($row[2])) . "','" . addslashes(trim($row[5])) . "')";
+                    }
+                }
+
+                // Pitching staff
+                $pattern = '/PITCHING STAFF<\/th>.*?<\/table>\s*<table[^>]*>(.*?)<\/table>/si';
+                if (preg_match($pattern, $html, $pm)) {
+                    preg_match_all('/<tr>(.*?)<\/tr>/si', $pm[1], $rows);
+                    $order = 0;
+                    foreach ($rows[1] as $rowHtml) {
+                        if (!preg_match('/<td[^>]*>([^<]+)<\/td>\s*<td[^>]*>([^<]*)<\/td>\s*<td[^>]*><a href="[^"]*player_(\d+)\.[^"]*">/si', $rowHtml, $rm)) continue;
+                        $order++;
+                        $staffRows[] = "({$teamId}," . (int)$rm[3] . ",'" . addslashes(trim($rm[1])) . "','" . addslashes(trim($rm[2])) . "',{$order})";
+                    }
+                }
+            }
+
+            // Import
+            $pdo->exec("TRUNCATE TABLE `team_starting_lineups`");
+            $pdo->exec("TRUNCATE TABLE `team_pitching_staff`");
+
+            if (!empty($lineupRows)) {
+                $pdo->exec("INSERT INTO `team_starting_lineups` VALUES " . implode(",", $lineupRows));
+                echo "<p class='ok'>&#10003; Lineups: " . count($lineupRows) . " slots imported</p>";
+            } else {
+                echo "<p class='warn'>No lineup data found in reports</p>";
+            }
+
+            if (!empty($staffRows)) {
+                $pdo->exec("INSERT INTO `team_pitching_staff` VALUES " . implode(",", $staffRows));
+                echo "<p class='ok'>&#10003; Pitching staff: " . count($staffRows) . " entries imported</p>";
+            } else {
+                echo "<p class='warn'>No pitching staff data found in reports</p>";
+            }
+        }
+        if (ob_get_level()) ob_flush(); flush();
     }
 
     $pdo->exec("SET FOREIGN_KEY_CHECKS=1");
