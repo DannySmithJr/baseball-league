@@ -44,6 +44,27 @@
                     <h4 class="font-semibold text-gray-800 mb-1">Scores</h4>
                     <p class="text-gray-500 text-sm">Enter and update game scores.</p>
                 </div>
+                <a href="{{ route('adm.sql.index') }}" class="bg-white shadow-sm sm:rounded-lg p-6 block hover:bg-gray-50 transition">
+                    <div class="text-red-500 mb-3">
+                        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2 1 3 3 3h10c2 0 3-1 3-3V7M4 7c0-2 1-3 3-3h10c2 0 3 1 3 3M4 7h16M9 11h6"/></svg>
+                    </div>
+                    <h4 class="font-semibold text-gray-800 mb-1">SQL Importer</h4>
+                    <p class="text-gray-500 text-sm">Import OOTP MySQL export files into the database.</p>
+                </a>
+                <a href="{{ route('adm.settings.edit') }}" class="bg-white shadow-sm sm:rounded-lg p-6 block hover:bg-gray-50 transition">
+                    <div class="text-red-500 mb-3">
+                        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                    </div>
+                    <h4 class="font-semibold text-gray-800 mb-1">Settings</h4>
+                    <p class="text-gray-500 text-sm">Configure league name, registration, and links.</p>
+                </a>
+                <a href="{{ route('adm.streams') }}" class="bg-white shadow-sm sm:rounded-lg p-6 block hover:bg-gray-50 transition">
+                    <div class="text-red-500 mb-3">
+                        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.277A1 1 0 0121 8.723v6.554a1 1 0 01-1.447.894L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z"/></svg>
+                    </div>
+                    <h4 class="font-semibold text-gray-800 mb-1">Stream Schedule</h4>
+                    <p class="text-gray-500 text-sm">Manage Twitch stream schedule entries.</p>
+                </a>
             </div>
 
         </div>

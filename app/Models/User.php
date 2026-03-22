@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['name', 'email', 'password', 'role'])]
+#[Fillable(['name', 'email', 'password', 'role', 'twitch_username'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -20,6 +20,35 @@ class User extends Authenticatable
     public function isAdmin(): bool
     {
         return $this->role === 'admin';
+    }
+
+    public function isGm(): bool
+    {
+        return \DB::table('gms')->where('user_id', $this->id)->where('status', 2)->exists();
+    }
+
+    public function gmRecord(): ?object
+    {
+        return \DB::table('gms as gm')
+            ->join('teams as t', 't.team_id', '=', 'gm.team_id')
+            ->where('gm.user_id', $this->id)
+            ->where('gm.status', 2)
+            ->first();
+    }
+
+    public function hasPendingGm(): bool
+    {
+        return \DB::table('gms')->where('user_id', $this->id)->where('status', 1)->exists();
+    }
+
+    public function hasCcp(): bool
+    {
+        return \DB::table('ccps')->where('user_id', $this->id)->exists();
+    }
+
+    public function ccp(): ?object
+    {
+        return \DB::table('ccps')->where('user_id', $this->id)->first();
     }
 
     /**

@@ -1,0 +1,60 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Services\OotpService;
+
+class GameController extends Controller
+{
+    public function show(int $id, OotpService $ootp)
+    {
+        $game = $ootp->game($id);
+        if (!$game) abort(404);
+
+        $lineScore   = $ootp->gameInningScores($id);
+        $boxBatting  = $ootp->gameBoxBatting($id);
+        $boxPitching = $ootp->gameBoxPitching($id);
+        $atBats      = $ootp->gameAtBats($id, (int) $game->away_team, (int) $game->home_team);
+
+        // Team logos (era-accurate)
+        $year       = (int) substr($game->date, 0, 4);
+        $seasonYear = $ootp->seasonYear() ?? $year;
+        $teamLogos  = [];
+        foreach ($ootp->teams() as $t) {
+            $base = pathinfo($t->logo_file_name ?? '', PATHINFO_FILENAME);
+            $teamLogos[(int)$t->team_id] = OotpService::logoForYear($base, $seasonYear);
+        }
+
+        // Team W-L records
+        $homeAwayRecs = $ootp->teamHomeAwayRecords();
+
+        // Season batting averages for all batters in this box score
+        $batterIds = [];
+        foreach ($boxBatting as $players) {
+            foreach ($players as $p) {
+                $batterIds[] = (int)$p->player_id;
+            }
+        }
+        $batSeasonStats = $ootp->playerSeasonBatStats(array_unique($batterIds), $year);
+
+        // Per-player errors this game + season error totals
+        $gameLOB        = $ootp->gameLOB($id, (int)$game->away_team, (int)$game->home_team);
+        $gameErrorData  = $ootp->gameErrors($id, (int)$game->away_team, (int)$game->home_team);
+        $gameDoublePlays = $ootp->gameDoublePlays($id, (int)$game->away_team, (int)$game->home_team);
+        $errorPlayerIds = [];
+        foreach ($gameErrorData['counts'] as $teamErrors) {
+            foreach (array_keys($teamErrors) as $pid) {
+                $errorPlayerIds[] = $pid;
+            }
+        }
+        $seasonErrors = $ootp->playerSeasonErrorTotals(array_unique($errorPlayerIds), $year);
+        $atBatLogs    = $ootp->gameAtBatLogs($id);
+
+        return view('games.show', compact(
+            'game', 'lineScore', 'boxBatting', 'boxPitching', 'atBats',
+            'teamLogos', 'homeAwayRecs', 'batSeasonStats',
+            'gameErrorData', 'seasonErrors', 'gameLOB', 'gameDoublePlays',
+            'atBatLogs'
+        ));
+    }
+}

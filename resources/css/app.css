@@ -1,3 +1,371 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+    body {
+        font-family: 'Roboto Mono', ui-monospace, monospace;
+    }
+}
+
+/* ─────────────────────────────────────────
+   OOTP Rating Colors (1-100 Scale)
+───────────────────────────────────────── */
+
+.ootp-80 { color: #00bfff; font-weight: 700; }  /* bright blue — elite (80+) */
+.ootp-70 { color: #00cc00; font-weight: 700; }  /* bright green — great (70-79) */
+.ootp-60 { color: #cccc00; }                     /* yellow — above avg (60-69) */
+.ootp-50 { color: #ffffff; }                     /* white — average (50-59) */
+.ootp-40 { color: #ff8c00; }                     /* orange — below avg (40-49) */
+.ootp-30 { color: #ff0000; }                     /* red — poor (30-39) */
+.ootp-20 { color: #808080; }                     /* gray — terrible (1-29) */
+
+/* ─────────────────────────────────────────
+   Flip Cards — Season Leaders
+───────────────────────────────────────── */
+
+.cards-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 3rem;
+    justify-content: center;
+}
+
+.card-wrap {
+    width: 200px;
+    height: 280px;
+    flex-shrink: 0;
+    perspective: 1000px;
+    cursor: pointer;
+}
+
+.card-inner {
+    position: relative;
+    width: 200px;
+    height: 280px;
+    transform-style: preserve-3d;
+    transition: transform 0.5s;
+}
+
+.card-face {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 200px;
+    height: 280px;
+    border-radius: 12px;
+    overflow: hidden;
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    font-family: 'Roboto', sans-serif;
+}
+
+.card-front {
+    background: #111827;
+    border: 1px solid #1f2937;
+}
+
+.card-back {
+    background: #b91c1c;
+    transform: rotateY(180deg);
+}
+
+/* ── Front face ── */
+
+.card-pos-badge {
+    position: absolute;
+    top: 14px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    background: rgba(220, 38, 38, 0.12);
+    border: 2px solid rgba(220, 38, 38, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.card-pos-badge span {
+    font-size: 12px;
+    font-weight: 900;
+    color: #ef4444;
+}
+
+.card-name-zone {
+    position: absolute;
+    top: 62px;
+    left: 0;
+    right: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    text-align: center;
+    padding: 10px 14px 0;
+}
+
+.card-name {
+    font-weight: 900;
+    color: #fff;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    line-height: 1.3;
+}
+
+.card-nickname {
+    font-size: 11px;
+    color: #6b7280;
+    font-style: italic;
+    margin-top: 5px;
+    min-height: 16px;
+}
+
+.card-twitch-label {
+    font-size: 11px;
+    color: #4b5563;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-top: 16px;
+}
+
+.card-twitch-name {
+    font-size: 11px;
+    font-weight: 600;
+    color: #a78bfa;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-top: 3px;
+}
+
+.card-team {
+    font-size: 11px;
+    color: #4b5563;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-top: 10px;
+}
+
+.card-season {
+    position: absolute;
+    bottom: 84px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.45);
+    font-style: italic;
+}
+
+.card-stats-strip {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 80px;
+    border-top: 1px solid #1f2937;
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    padding: 0 10px;
+}
+
+.card-stat-item {
+    text-align: center;
+}
+
+.card-stat-val {
+    display: block;
+    font-weight: 700;
+    font-size: 17px;
+    color: #fff;
+}
+
+.card-stat-label {
+    display: block;
+    font-size: 10px;
+    color: #6b7280;
+    text-transform: uppercase;
+    margin-top: 3px;
+}
+
+/* ── Back face ── */
+
+.card-back-name-zone {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 66px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    text-align: center;
+    padding: 6px 10px 0;
+}
+
+.card-back-name {
+    font-weight: 900;
+    color: #fff;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    line-height: 1.2;
+}
+
+.card-back-nickname {
+    font-size: 11px;
+    color: rgba(254, 202, 202, 0.6);
+    font-style: italic;
+    margin-top: 2px;
+    min-height: 15px;
+}
+
+.card-back-team {
+    font-size: 10px;
+    color: rgba(254, 202, 202, 0.4);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+}
+
+.card-career-zone {
+    position: absolute;
+    top: 66px;
+    left: 0;
+    right: 0;
+    height: 54px;
+    border-top: 1px solid rgba(255, 255, 255, 0.15);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.card-career-stats {
+    display: flex;
+    gap: 14px;
+    justify-content: center;
+}
+
+.card-career-stat-item {
+    text-align: center;
+}
+
+.card-career-val {
+    display: block;
+    font-weight: 700;
+    font-size: 16px;
+    color: #fff;
+    line-height: 1;
+}
+
+.card-career-label {
+    display: block;
+    font-size: 10px;
+    color: rgba(254, 202, 202, 0.5);
+    text-transform: uppercase;
+    margin-top: 2px;
+}
+
+.card-career-war {
+    font-size: 10px;
+    color: rgba(254, 202, 202, 0.4);
+    text-transform: uppercase;
+    margin-top: 3px;
+}
+
+.card-career-war span {
+    color: #fde047;
+    font-weight: 700;
+}
+
+.card-awards-zone {
+    position: absolute;
+    top: 120px;
+    left: 0;
+    right: 0;
+    bottom: 24px;
+    border-top: 1px solid rgba(255, 255, 255, 0.15);
+    padding: 5px 10px;
+    overflow-y: auto;
+    text-align: center;
+}
+
+.card-awards-header {
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    color: rgba(254, 202, 202, 0.3);
+    text-transform: uppercase;
+    font-weight: 700;
+    margin-bottom: 3px;
+}
+
+.card-award-line {
+    font-size: 12px;
+    color: #fff;
+    font-weight: 500;
+    line-height: 1.5;
+}
+
+.card-award-none {
+    font-size: 11px;
+    color: rgba(254, 202, 202, 0.2);
+    margin-top: 16px;
+}
+
+.card-profile-link {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.card-profile-link a {
+    font-size: 10px;
+    color: rgba(254, 202, 202, 0.4);
+    text-decoration: none;
+}
+
+/* ─────────────────────────────────────────
+   Base Diamond — Game Log
+───────────────────────────────────────── */
+
+.base-diamond {
+    display: flex;
+    gap: 2px;
+    flex-shrink: 0;
+}
+
+.base-diamond-center {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+
+.diamond {
+    width: 6px;
+    height: 6px;
+    border-style: solid;
+    border-width: 0;
+    -webkit-transform: rotate(45deg);
+    -ms-transform: rotate(45deg);
+    transform: rotate(45deg);
+    -webkit-transition: background-color .3s cubic-bezier(.62,.28,.23,.99);
+    transition: background-color .3s cubic-bezier(.62,.28,.23,.99);
+}
+
+.first-base,
+.third-base {
+    -ms-flex-item-align: end;
+    align-self: flex-end;
+}
