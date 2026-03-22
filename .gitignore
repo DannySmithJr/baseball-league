@@ -19,6 +19,8 @@
 /storage/*.key
 /storage/pail
 /vendor
+/database/ootpimport/
+/public/reports/
 Homestead.json
 Homestead.yaml
 Thumbs.db

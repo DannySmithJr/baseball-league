@@ -1,1 +1,0 @@
-INSERT INTO `settings` VALUES (1,'sim Major League Baseball','sMLB',1,1,1,'https://twitch.tv/dannydsmithjr',NULL,NULL,NULL,NULL,NULL,NULL,'2026-03-20 11:03:32',1,'2026-03-20 18:00:00',7,'2026-03-19 14:16:06','2026-03-20 11:03:32');

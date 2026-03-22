@@ -1,1 +1,0 @@
-INSERT INTO `continents` VALUES (1,'Africa','AF','African',1000010001,-1),(2,'Asia','AS','Asian',2147483647,-1),(3,'Europe','EU','European',731000000,-1),(4,'North America','NA','North American',528720588,-1),(5,'Oceania','OC','Oceanic',35670000,-1),(6,'South America','SA','South American',385742554,-1);
