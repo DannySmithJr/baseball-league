@@ -9,250 +9,415 @@
 
     @if($ratings)
     @php
-
-        // Ratings are stored on 1-100 scale (OOTP setting), display as-is
         $toScout = fn($v) => (int)$v;
 
-        // OOTP color scale (1-100)
-        $ratingColor = fn($v) => match(true) {
-            $v >= 80 => 'ootp-80',
-            $v >= 70 => 'ootp-70',
-            $v >= 60 => 'ootp-60',
-            $v >= 50 => 'ootp-50',
-            $v >= 40 => 'ootp-40',
-            $v >= 30 => 'ootp-30',
-            default  => 'ootp-20',
+        // OOTP-matched colors from styles.css (datac0-datac6)
+        $barBg = fn($v) => match(true) {
+            $v >= 80 => 'background:#0099FF',  // datac6 blue
+            $v >= 70 => 'background:#00C6A2',  // datac5 teal
+            $v >= 60 => 'background:#65E212',  // datac4 green
+            $v >= 50 => 'background:#FFE10B',  // datac3 yellow
+            $v >= 40 => 'background:#fa7000',  // datac2 orange
+            $v >= 30 => 'background:#FF6666',  // datac1 red
+            default  => 'background:#555555',  // datac0 gray
+        };
+
+        $barBgFaded = fn($v) => match(true) {
+            $v >= 80 => 'background:rgba(0,153,255,0.25)',
+            $v >= 70 => 'background:rgba(0,198,162,0.25)',
+            $v >= 60 => 'background:rgba(101,226,18,0.25)',
+            $v >= 50 => 'background:rgba(255,225,11,0.25)',
+            $v >= 40 => 'background:rgba(250,112,0,0.25)',
+            $v >= 30 => 'background:rgba(255,102,102,0.25)',
+            default  => 'background:rgba(85,85,85,0.25)',
+        };
+
+        $textColor = fn($v) => match(true) {
+            $v >= 80 => 'color:#0099FF',
+            $v >= 70 => 'color:#00C6A2',
+            $v >= 60 => 'color:#65E212',
+            $v >= 50 => 'color:#FFE10B',
+            $v >= 40 => 'color:#fa7000',
+            $v >= 30 => 'color:#FF6666',
+            default  => 'color:#555555',
         };
 
         $armSlots = [1 => 'Normal', 2 => 'Sidearm', 3 => 'Over the Top', 4 => 'Submarine'];
-    @endphp
-    <section>
-        <h2 class="text-xs font-bold text-red-500 uppercase tracking-widest mb-3">Ratings</h2>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        // Check if player is a pitcher
+        $isPitcherPlayer = (int)($player->position ?? 0) === 1;
+
+        // Check if pitching ratings are meaningful (any > 1)
+        $hasRealPitching = max(
+            (int)($ratings->pitching_ratings_overall_stuff ?? 0),
+            (int)($ratings->pitching_ratings_overall_movement ?? 0),
+            (int)($ratings->pitching_ratings_overall_control ?? 0)
+        ) > 5;
+    @endphp
+
+    <section>
+        {{-- Top row: 4 cards — primary pair first --}}
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
 
             {{-- Batting Ratings --}}
-            <div class="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
-                <table class="w-full text-sm">
-                    <thead>
-                        <tr class="text-[11px] text-gray-500 uppercase tracking-wider border-b border-gray-800">
-                            <th class="py-2 px-3 text-left">Batting</th>
-                            <th class="py-2 px-3 text-center w-12">Con</th>
-                            <th class="py-2 px-3 text-center w-12">Gap</th>
-                            <th class="py-2 px-3 text-center w-12">Pow</th>
-                            <th class="py-2 px-3 text-center w-12">Eye</th>
-                            <th class="py-2 px-3 text-center w-12">K's</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-800/40">
-                        @foreach([
-                            ['label' => 'Current', 'prefix' => 'batting_ratings_overall_'],
-                            ['label' => 'vs R',    'prefix' => 'batting_ratings_vsr_'],
-                            ['label' => 'vs L',    'prefix' => 'batting_ratings_vsl_'],
-                            ['label' => 'Potential','prefix' => 'batting_ratings_talent_'],
-                        ] as $row)
-                        @php
-                            $con = $toScout($ratings->{$row['prefix'].'contact'});
-                            $gap = $toScout($ratings->{$row['prefix'].'gap'});
-                            $pow = $toScout($ratings->{$row['prefix'].'power'});
-                            $eye = $toScout($ratings->{$row['prefix'].'eye'});
-                            $ks  = $toScout($ratings->{$row['prefix'].'strikeouts'});
-                        @endphp
-                        <tr>
-                            <td class="py-1.5 px-3 text-gray-400 text-xs">{{ $row['label'] }}</td>
-                            <td class="py-1.5 px-3 text-center {{ $ratingColor($con) }}">{{ $con }}</td>
-                            <td class="py-1.5 px-3 text-center {{ $ratingColor($gap) }}">{{ $gap }}</td>
-                            <td class="py-1.5 px-3 text-center {{ $ratingColor($pow) }}">{{ $pow }}</td>
-                            <td class="py-1.5 px-3 text-center {{ $ratingColor($eye) }}">{{ $eye }}</td>
-                            <td class="py-1.5 px-3 text-center {{ $ratingColor($ks) }}">{{ $ks }}</td>
-                        </tr>
+            <div class="bg-gray-900 border border-gray-800 rounded-xl p-4 {{ $isPitcherPlayer ? 'order-3' : 'order-1' }}">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest">Basic Batting Ratings</h3>
+                    <span class="text-[10px] text-gray-600">Current / Potential</span>
+                </div>
+                <div class="space-y-3">
+                    @foreach([
+                        ['Contact', 'batting_ratings_overall_contact', 'batting_ratings_talent_contact', false],
+                        ['Avoid K\'s', 'batting_ratings_overall_strikeouts', 'batting_ratings_talent_strikeouts', true],
+                        ['BABIP', 'batting_ratings_overall_babip', 'batting_ratings_talent_babip', true],
+                        ['Gap Power', 'batting_ratings_overall_gap', 'batting_ratings_talent_gap', false],
+                        ['Power', 'batting_ratings_overall_power', 'batting_ratings_talent_power', false],
+                        ['Eye', 'batting_ratings_overall_eye', 'batting_ratings_talent_eye', false],
+                    ] as [$label, $curKey, $potKey, $indent])
+                    @php
+                        $cur = $toScout($ratings->$curKey ?? 0);
+                        $pot = $toScout($ratings->$potKey ?? 0);
+                    @endphp
+                    <div class="{{ $indent ? 'ml-4' : '' }}">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="text-xs {{ $indent ? 'text-gray-500 text-[11px]' : 'text-gray-400' }}">{{ $label }}</span>
+                            <span class="text-xs font-mono">
+                                <span class="font-bold" style="{{ $textColor($cur) }}">{{ $cur }}</span>
+                                <span class="text-gray-600"> / </span>
+                                <span class="font-bold" style="{{ $textColor($pot) }}">{{ $pot }}</span>
+                            </span>
+                        </div>
+                        <div class="relative h-2.5 bg-gray-800/80 rounded overflow-hidden">
+                            @if($pot > $cur)
+                            <div class="h-full rounded absolute top-0 left-0" style="{{ $barBgFaded($pot) }}; width: {{ min($pot, 100) }}%"></div>
+                            @endif
+                            <div class="h-full rounded relative" style="{{ $barBg($cur) }}; width: {{ min($cur, 100) }}%"></div>
+                        </div>
+                    </div>
+                    @endforeach
+                </div>
+            </div>
+
+            {{-- Batting vs R / vs L --}}
+            <div class="bg-gray-900 border border-gray-800 rounded-xl p-4 {{ $isPitcherPlayer ? 'order-4' : 'order-2' }}">
+                <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Batting Splits</h3>
+                @foreach([
+                    ['vs Right', 'batting_ratings_vsr_'],
+                    ['vs Left', 'batting_ratings_vsl_'],
+                ] as [$splitLabel, $prefix])
+                <div class="mb-5 last:mb-0">
+                    <p class="text-[10px] text-gray-500 uppercase tracking-wider mb-2">{{ $splitLabel }}</p>
+                    <div class="space-y-1.5">
+                        @foreach(['contact'=>'Con','gap'=>'Gap','power'=>'Pow','eye'=>'Eye','strikeouts'=>'K\'s'] as $key => $lbl)
+                        @php $v = $toScout($ratings->{$prefix.$key} ?? 0); @endphp
+                        <div class="flex items-center gap-2">
+                            <span class="text-[10px] text-gray-500 w-8 shrink-0">{{ $lbl }}</span>
+                            <div class="flex-1 h-2 bg-gray-800/80 rounded overflow-hidden">
+                                <div class="h-full rounded" style="{{ $barBg($v) }}; width: {{ min($v, 100) }}%"></div>
+                            </div>
+                            <span class="text-xs font-bold font-mono w-7 text-right" style="{{ $textColor($v) }}">{{ $v }}</span>
+                        </div>
                         @endforeach
-                    </tbody>
-                </table>
+                    </div>
+                </div>
+                @endforeach
             </div>
 
             {{-- Pitching Ratings --}}
-            <div class="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
-                <table class="w-full text-sm">
-                    <thead>
-                        <tr class="text-[11px] text-gray-500 uppercase tracking-wider border-b border-gray-800">
-                            <th class="py-2 px-3 text-left">Pitching</th>
-                            <th class="py-2 px-3 text-center w-14">Stuff</th>
-                            <th class="py-2 px-3 text-center w-14">Move</th>
-                            <th class="py-2 px-3 text-center w-14">Ctrl</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-800/40">
-                        @foreach([
-                            ['label' => 'Current', 'prefix' => 'pitching_ratings_overall_'],
-                            ['label' => 'vs R',    'prefix' => 'pitching_ratings_vsr_'],
-                            ['label' => 'vs L',    'prefix' => 'pitching_ratings_vsl_'],
-                            ['label' => 'Potential','prefix' => 'pitching_ratings_talent_'],
-                        ] as $row)
+            <div class="bg-gray-900 border border-gray-800 rounded-xl p-4 {{ $isPitcherPlayer ? 'order-1' : 'order-3' }}">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest">Pitching Ratings</h3>
+                    <span class="text-[10px] text-gray-600">Current / Potential</span>
+                </div>
+                <div class="space-y-3">
+                    @foreach([
+                        ['Stuff', 'pitching_ratings_overall_stuff', 'pitching_ratings_talent_stuff', false],
+                        ['Movement', 'pitching_ratings_overall_movement', 'pitching_ratings_talent_movement', false],
+                        ['HR Allowed', 'pitching_ratings_overall_hra', 'pitching_ratings_talent_hra', true],
+                        ['PBABIP', 'pitching_ratings_overall_pbabip', 'pitching_ratings_talent_pbabip', true],
+                        ['Control', 'pitching_ratings_overall_control', 'pitching_ratings_talent_control', false],
+                    ] as [$label, $curKey, $potKey, $indent])
+                    @php
+                        $cur = $toScout($ratings->$curKey ?? 0);
+                        $pot = $toScout($ratings->$potKey ?? 0);
+                    @endphp
+                    <div class="{{ $indent ? 'ml-4' : '' }}">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="text-xs {{ $indent ? 'text-gray-500 text-[11px]' : 'text-gray-400' }}">{{ $label }}</span>
+                            <span class="text-xs font-mono">
+                                <span class="font-bold" style="{{ $textColor($cur) }}">{{ $cur }}</span>
+                                <span class="text-gray-600"> / </span>
+                                <span class="font-bold" style="{{ $textColor($pot) }}">{{ $pot }}</span>
+                            </span>
+                        </div>
+                        <div class="relative h-2.5 bg-gray-800/80 rounded overflow-hidden">
+                            @if($pot > $cur)
+                            <div class="h-full rounded absolute top-0 left-0" style="{{ $barBgFaded($pot) }}; width: {{ min($pot, 100) }}%"></div>
+                            @endif
+                            <div class="h-full rounded relative" style="{{ $barBg($cur) }}; width: {{ min($cur, 100) }}%"></div>
+                        </div>
+                    </div>
+                    @endforeach
+
+                    {{-- Pitch Arsenal --}}
+                    @php
+                        $pitchNames = [
+                            'fastball'=>'Fastball','slider'=>'Slider','curveball'=>'Curveball',
+                            'screwball'=>'Screwball','forkball'=>'Forkball','changeup'=>'Changeup',
+                            'sinker'=>'Sinker','splitter'=>'Splitter','knuckleball'=>'Knuckleball',
+                            'cutter'=>'Cutter','circlechange'=>'Circle Change','knucklecurve'=>'Knuckle Curve',
+                        ];
+                        $hasPitches = false;
+                        foreach ($pitchNames as $k => $n) {
+                            if (($ratings->{'pitching_ratings_pitches_'.$k} ?? 0) > 0 || ($ratings->{'pitching_ratings_pitches_talent_'.$k} ?? 0) > 0) {
+                                $hasPitches = true; break;
+                            }
+                        }
+                    @endphp
+                    @if($hasPitches)
+                    @php
+                        // Collect pitches with ratings, sort by current desc, limit to 6
+                        $activePitches = [];
+                        foreach ($pitchNames as $k => $n) {
+                            $c = $toScout($ratings->{'pitching_ratings_pitches_'.$k} ?? 0);
+                            $p = $toScout($ratings->{'pitching_ratings_pitches_talent_'.$k} ?? 0);
+                            if ($c > 0 || $p > 0) {
+                                $activePitches[] = ['key' => $k, 'label' => $n, 'cur' => $c, 'pot' => $p];
+                            }
+                        }
+                        usort($activePitches, fn($a, $b) => $b['cur'] <=> $a['cur']);
+                        $activePitches = array_slice($activePitches, 0, 6);
+                    @endphp
+                    <div class="border-t border-gray-800 pt-3 mt-3">
+                        <p class="text-[10px] text-gray-500 uppercase tracking-wider mb-2">Pitch Arsenal</p>
+                        <div class="space-y-2">
+                        @foreach($activePitches as $pitch)
                         @php
-                            $stuff = $toScout($ratings->{$row['prefix'].'stuff'});
-                            $move  = $toScout($ratings->{$row['prefix'].'movement'});
-                            $ctrl  = $toScout($ratings->{$row['prefix'].'control'});
+                            $cur = $pitch['cur'];
+                            $pot = $pitch['pot'];
+                            $label = $pitch['label'];
                         @endphp
-                        <tr>
-                            <td class="py-1.5 px-3 text-gray-400 text-xs">{{ $row['label'] }}</td>
-                            <td class="py-1.5 px-3 text-center {{ $ratingColor($stuff) }}">{{ $stuff }}</td>
-                            <td class="py-1.5 px-3 text-center {{ $ratingColor($move) }}">{{ $move }}</td>
-                            <td class="py-1.5 px-3 text-center {{ $ratingColor($ctrl) }}">{{ $ctrl }}</td>
-                        </tr>
+                        <div>
+                            <div class="flex items-center justify-between mb-0.5">
+                                <span class="text-xs text-gray-400">{{ $label }}</span>
+                                <span class="text-xs font-mono">
+                                    <span class="font-bold" style="{{ $textColor($cur) }}">{{ $cur }}</span>
+                                    <span class="text-gray-600"> / </span>
+                                    <span class="font-bold" style="{{ $textColor($pot) }}">{{ $pot }}</span>
+                                </span>
+                            </div>
+                            <div class="relative h-2 bg-gray-800/80 rounded overflow-hidden">
+                                @if($pot > $cur)
+                                <div class="h-full rounded absolute top-0 left-0" style="{{ $barBgFaded($pot) }}; width: {{ min($pot, 100) }}%"></div>
+                                @endif
+                                <div class="h-full rounded relative" style="{{ $barBg($cur) }}; width: {{ min($cur, 100) }}%"></div>
+                            </div>
+                        </div>
                         @endforeach
-                    </tbody>
-                </table>
+                        </div>
+                    </div>
+                    @endif
+
+                    {{-- Other Pitching --}}
+                    <div class="border-t border-gray-800 pt-3 mt-1">
+                        <p class="text-[10px] text-gray-500 uppercase tracking-wider mb-2">Other Pitching</p>
+                        <div class="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
+                            <span class="text-gray-400">Velocity</span>
+                            <span class="text-white text-right font-mono">{{ $ratings->pitching_ratings_misc_velocity }}-{{ $ratings->pitching_ratings_misc_velocity_target }} (Max)</span>
+                            <span class="text-gray-400">GB %</span>
+                            <span class="text-white text-right font-mono">{{ $ratings->pitching_ratings_misc_ground_fly }}%</span>
+                            <span class="text-gray-400">Arm Slot</span>
+                            <span class="text-white text-right">{{ $armSlots[$ratings->pitching_ratings_misc_arm_slot] ?? 'Normal' }}</span>
+                        </div>
+                        @foreach([
+                            ['Stamina', $toScout($ratings->pitching_ratings_misc_stamina)],
+                            ['Hold Runners', $toScout($ratings->pitching_ratings_misc_hold)],
+                        ] as [$barLabel, $barVal])
+                        <div class="mt-2">
+                            <div class="flex items-center justify-between mb-0.5">
+                                <span class="text-xs text-gray-400">{{ $barLabel }}</span>
+                                <span class="text-xs font-bold font-mono" style="{{ $textColor($barVal) }}">{{ $barVal }}</span>
+                            </div>
+                            <div class="h-2 bg-gray-800/80 rounded overflow-hidden">
+                                <div class="h-full rounded" style="{{ $barBg($barVal) }}; width: {{ min($barVal, 100) }}%"></div>
+                            </div>
+                        </div>
+                        @endforeach
+                    </div>
+                </div>
+            </div>
+            {{-- Pitching Splits --}}
+            <div class="bg-gray-900 border border-gray-800 rounded-xl p-4 {{ $isPitcherPlayer ? 'order-2' : 'order-4' }}">
+                <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Pitching Splits</h3>
+                @foreach([
+                    ['vs Right', 'pitching_ratings_vsr_'],
+                    ['vs Left', 'pitching_ratings_vsl_'],
+                ] as [$splitLabel, $prefix])
+                <div class="mb-5 last:mb-0">
+                    <p class="text-[10px] text-gray-500 uppercase tracking-wider mb-2">{{ $splitLabel }}</p>
+                    <div class="space-y-1.5">
+                        @foreach(['stuff'=>'Stuff','movement'=>'Mov','control'=>'Ctrl','hra'=>'HRA','pbabip'=>'PBABIP'] as $key => $lbl)
+                        @php $v = $toScout($ratings->{$prefix.$key} ?? 0); @endphp
+                        <div class="flex items-center gap-2">
+                            <span class="text-[10px] text-gray-500 w-10 shrink-0">{{ $lbl }}</span>
+                            <div class="flex-1 h-2 bg-gray-800/80 rounded overflow-hidden">
+                                <div class="h-full rounded" style="{{ $barBg($v) }}; width: {{ min($v, 100) }}%"></div>
+                            </div>
+                            <span class="text-xs font-bold font-mono w-7 text-right" style="{{ $textColor($v) }}">{{ $v }}</span>
+                        </div>
+                        @endforeach
+                    </div>
+                </div>
+                @endforeach
             </div>
 
-            {{-- Fielding --}}
-            <div class="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
-                <table class="w-full text-sm">
-                    <thead>
-                        <tr class="text-[11px] text-gray-500 uppercase tracking-wider border-b border-gray-800">
-                            <th class="py-2 px-3 text-left">Fielding</th>
-                            <th class="py-2 px-3 text-center w-10">C</th>
-                            <th class="py-2 px-3 text-center w-10">IF</th>
-                            <th class="py-2 px-3 text-center w-10">OF</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-800/40">
-                        @php
-                            $cArm = $toScout($ratings->fielding_ratings_catcher_arm);
-                            $cAbi = $toScout($ratings->fielding_ratings_catcher_ability);
-                            $cFrm = $toScout($ratings->fielding_ratings_catcher_framing);
-                            $ifRng = $toScout($ratings->fielding_ratings_infield_range);
-                            $ifArm = $toScout($ratings->fielding_ratings_infield_arm);
-                            $ifErr = $toScout($ratings->fielding_ratings_infield_error);
-                            $tdp   = $toScout($ratings->fielding_ratings_turn_doubleplay);
-                            $ofRng = $toScout($ratings->fielding_ratings_outfield_range);
-                            $ofArm = $toScout($ratings->fielding_ratings_outfield_arm);
-                            $ofErr = $toScout($ratings->fielding_ratings_outfield_error);
-                        @endphp
-                        <tr><td class="py-1.5 px-3 text-gray-400 text-xs">Range</td><td class="py-1.5 px-3 text-center {{ $ratingColor($cAbi) }}">{{ $cAbi ?: '' }}</td><td class="py-1.5 px-3 text-center {{ $ratingColor($ifRng) }}">{{ $ifRng }}</td><td class="py-1.5 px-3 text-center {{ $ratingColor($ofRng) }}">{{ $ofRng }}</td></tr>
-                        <tr><td class="py-1.5 px-3 text-gray-400 text-xs">Error</td><td class="py-1.5 px-3 text-center"></td><td class="py-1.5 px-3 text-center {{ $ratingColor($ifErr) }}">{{ $ifErr }}</td><td class="py-1.5 px-3 text-center {{ $ratingColor($ofErr) }}">{{ $ofErr }}</td></tr>
-                        <tr><td class="py-1.5 px-3 text-gray-400 text-xs">Arm</td><td class="py-1.5 px-3 text-center {{ $ratingColor($cArm) }}">{{ $cArm ?: '' }}</td><td class="py-1.5 px-3 text-center {{ $ratingColor($ifArm) }}">{{ $ifArm }}</td><td class="py-1.5 px-3 text-center {{ $ratingColor($ofArm) }}">{{ $ofArm }}</td></tr>
-                        <tr><td class="py-1.5 px-3 text-gray-400 text-xs">Turn DP</td><td class="py-1.5 px-3 text-center"></td><td class="py-1.5 px-3 text-center {{ $ratingColor($tdp) }}">{{ $tdp }}</td><td class="py-1.5 px-3 text-center"></td></tr>
-                        @if($cArm > 0)
-                        <tr><td class="py-1.5 px-3 text-gray-400 text-xs">C Block</td><td class="py-1.5 px-3 text-center {{ $ratingColor($cAbi) }}">{{ $cAbi }}</td><td class="py-1.5 px-3 text-center"></td><td class="py-1.5 px-3 text-center"></td></tr>
-                        <tr><td class="py-1.5 px-3 text-gray-400 text-xs">C Frame</td><td class="py-1.5 px-3 text-center {{ $ratingColor($cFrm) }}">{{ $cFrm }}</td><td class="py-1.5 px-3 text-center"></td><td class="py-1.5 px-3 text-center"></td></tr>
-                        @endif
-                    </tbody>
-                </table>
+        </div>
+
+        {{-- Bottom row: 3 cards full width --}}
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+
+            {{-- Defensive Ratings --}}
+            <div class="bg-gray-900 border border-gray-800 rounded-xl p-4">
+                <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Defensive Ratings</h3>
+                @php
+                    $cArm = $toScout($ratings->fielding_ratings_catcher_arm);
+                    $cAbi = $toScout($ratings->fielding_ratings_catcher_ability);
+                    $cFrm = $toScout($ratings->fielding_ratings_catcher_framing);
+                    $ifRng = $toScout($ratings->fielding_ratings_infield_range);
+                    $ifArm = $toScout($ratings->fielding_ratings_infield_arm);
+                    $ifErr = $toScout($ratings->fielding_ratings_infield_error);
+                    $tdp   = $toScout($ratings->fielding_ratings_turn_doubleplay);
+                    $ofRng = $toScout($ratings->fielding_ratings_outfield_range);
+                    $ofArm = $toScout($ratings->fielding_ratings_outfield_arm);
+                    $ofErr = $toScout($ratings->fielding_ratings_outfield_error);
+
+                    $defRatings = [];
+                    if ($cArm > 0 || $cAbi > 0) {
+                        $defRatings[] = ['Catcher Ability', $cAbi];
+                        $defRatings[] = ['Catcher Arm', $cArm];
+                        $defRatings[] = ['Catcher Framing', $cFrm];
+                    }
+                    if ($ifRng > 0 || $ifArm > 0) {
+                        $defRatings[] = ['Infield Range', $ifRng];
+                        $defRatings[] = ['Infield Error', $ifErr];
+                        $defRatings[] = ['Infield Arm', $ifArm];
+                        $defRatings[] = ['Turn DP', $tdp];
+                    }
+                    if ($ofRng > 0 || $ofArm > 0) {
+                        $defRatings[] = ['Outfield Range', $ofRng];
+                        $defRatings[] = ['Outfield Error', $ofErr];
+                        $defRatings[] = ['Outfield Arm', $ofArm];
+                    }
+                @endphp
+                <div class="space-y-2">
+                    @foreach($defRatings as [$label, $val])
+                    <div>
+                        <div class="flex items-center justify-between mb-0.5">
+                            <span class="text-xs text-gray-400">{{ $label }}</span>
+                            <span class="text-xs font-bold font-mono" style="{{ $textColor($val) }}">{{ $val }}</span>
+                        </div>
+                        <div class="h-2 bg-gray-800/80 rounded overflow-hidden">
+                            <div class="h-full rounded" style="{{ $barBg($val) }}; width: {{ min($val, 100) }}%"></div>
+                        </div>
+                    </div>
+                    @endforeach
+                    @if(empty($defRatings))
+                    <p class="text-gray-600 text-xs">No defensive ratings available.</p>
+                    @endif
+                </div>
             </div>
 
             {{-- Position Ratings --}}
-            <div class="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
-                <table class="w-full text-sm">
-                    <thead>
-                        <tr class="text-[11px] text-gray-500 uppercase tracking-wider border-b border-gray-800">
-                            <th class="py-2 px-3 text-left">Position</th>
-                            <th class="py-2 px-3 text-center w-20">Cur / Pot</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-800/40">
-                        @php
-                            $posNames = [1=>'Pitcher',2=>'Catcher',3=>'First',4=>'Second',5=>'Third',6=>'Short',7=>'Left',8=>'Center',9=>'Right'];
-                        @endphp
-                        @for($pi = 1; $pi <= 9; $pi++)
-                        @php
-                            $cur = $toScout($ratings->{'fielding_rating_pos'.$pi} ?? 0);
-                            $pot = $toScout($ratings->{'fielding_rating_pos'.$pi.'_pot'} ?? 0);
-                        @endphp
-                        @if($cur > 0 || $pot > 0)
-                        <tr>
-                            <td class="py-1.5 px-3 text-gray-400 text-xs">{{ $posNames[$pi] ?? $pi }}</td>
-                            <td class="py-1.5 px-3 text-center">
-                                <span class="{{ $ratingColor($cur) }}">{{ $cur }}</span>
+            <div class="bg-gray-900 border border-gray-800 rounded-xl p-4">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest">Position Ratings</h3>
+                    <span class="text-[10px] text-gray-600">Current / Potential</span>
+                </div>
+                @php
+                    $posNames = [1=>'Pitcher',2=>'Catcher',3=>'First Base',4=>'Second Base',5=>'Third Base',6=>'Shortstop',7=>'Left Field',8=>'Center Field',9=>'Right Field'];
+                @endphp
+                <div class="space-y-2">
+                    @for($pi = 1; $pi <= 9; $pi++)
+                    @php
+                        $cur = $toScout($ratings->{'fielding_rating_pos'.$pi} ?? 0);
+                        $pot = $toScout($ratings->{'fielding_rating_pos'.$pi.'_pot'} ?? 0);
+                    @endphp
+                    @if($cur > 0 || $pot > 0)
+                    <div>
+                        <div class="flex items-center justify-between mb-0.5">
+                            <span class="text-xs text-gray-400">{{ $posNames[$pi] ?? $pi }}</span>
+                            <span class="text-xs font-mono">
+                                <span class="font-bold" style="{{ $textColor($cur) }}">{{ $cur }}</span>
                                 <span class="text-gray-600"> / </span>
-                                <span class="{{ $ratingColor($pot) }}">{{ $pot }}</span>
-                            </td>
-                        </tr>
-                        @endif
-                        @endfor
-                    </tbody>
-                </table>
+                                <span class="font-bold" style="{{ $textColor($pot) }}">{{ $pot }}</span>
+                            </span>
+                        </div>
+                        <div class="relative h-2 bg-gray-800/80 rounded overflow-hidden">
+                            @if($pot > $cur)
+                            <div class="h-full rounded absolute top-0 left-0" style="{{ $barBgFaded($pot) }}; width: {{ min($pot, 100) }}%"></div>
+                            @endif
+                            <div class="h-full rounded relative" style="{{ $barBg($cur) }}; width: {{ min($cur, 100) }}%"></div>
+                        </div>
+                    </div>
+                    @endif
+                    @endfor
+                </div>
             </div>
 
-            {{-- Run/Bunt --}}
-            <div class="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
-                <table class="w-full text-sm">
-                    <thead>
-                        <tr class="text-[11px] text-gray-500 uppercase tracking-wider border-b border-gray-800">
-                            <th class="py-2 px-3 text-left" colspan="2">Run / Bunt</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-800/40">
-                        @php
-                            $spd = $toScout($ratings->running_ratings_speed);
-                            $stlAgg = $toScout($ratings->running_ratings_stealing_rate);
-                            $stl = $toScout($ratings->running_ratings_stealing);
-                            $run = $toScout($ratings->running_ratings_baserunning);
-                            $bunt = $toScout($ratings->batting_ratings_misc_bunt);
-                            $bfh  = $toScout($ratings->batting_ratings_misc_bunt_for_hit);
-                        @endphp
-                        <tr><td class="py-1.5 px-3 text-gray-400 text-xs">Speed</td><td class="py-1.5 px-3 text-right {{ $ratingColor($spd) }}">{{ $spd }}</td></tr>
-                        <tr><td class="py-1.5 px-3 text-gray-400 text-xs">Stl Aggr</td><td class="py-1.5 px-3 text-right {{ $ratingColor($stlAgg) }}">{{ $stlAgg }}</td></tr>
-                        <tr><td class="py-1.5 px-3 text-gray-400 text-xs">Stealing</td><td class="py-1.5 px-3 text-right {{ $ratingColor($stl) }}">{{ $stl }}</td></tr>
-                        <tr><td class="py-1.5 px-3 text-gray-400 text-xs">Running</td><td class="py-1.5 px-3 text-right {{ $ratingColor($run) }}">{{ $run }}</td></tr>
-                        <tr><td class="py-1.5 px-3 text-gray-400 text-xs">Sac Bunt</td><td class="py-1.5 px-3 text-right {{ $ratingColor($bunt) }}">{{ $bunt }}</td></tr>
-                        <tr><td class="py-1.5 px-3 text-gray-400 text-xs">Bunt for Hit</td><td class="py-1.5 px-3 text-right {{ $ratingColor($bfh) }}">{{ $bfh }}</td></tr>
-                    </tbody>
-                </table>
+            {{-- Run / Bunt --}}
+            <div class="bg-gray-900 border border-gray-800 rounded-xl p-4">
+                <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Run / Bunt</h3>
+                @php
+                    $runRatings = [
+                        ['Speed', $toScout($ratings->running_ratings_speed)],
+                        ['Steal Tendency', $toScout($ratings->running_ratings_stealing_rate)],
+                        ['Stealing', $toScout($ratings->running_ratings_stealing)],
+                        ['Baserunning', $toScout($ratings->running_ratings_baserunning)],
+                        ['Sac Bunt', $toScout($ratings->batting_ratings_misc_bunt)],
+                        ['Bunt for Hit', $toScout($ratings->batting_ratings_misc_bunt_for_hit)],
+                    ];
+                @endphp
+                <div class="space-y-2">
+                    @foreach($runRatings as [$label, $val])
+                    <div>
+                        <div class="flex items-center justify-between mb-0.5">
+                            <span class="text-xs text-gray-400">{{ $label }}</span>
+                            <span class="text-xs font-bold font-mono" style="{{ $textColor($val) }}">{{ $val }}</span>
+                        </div>
+                        <div class="h-2 bg-gray-800/80 rounded overflow-hidden">
+                            <div class="h-full rounded" style="{{ $barBg($val) }}; width: {{ min($val, 100) }}%"></div>
+                        </div>
+                    </div>
+                    @endforeach
+                </div>
             </div>
-
-            {{-- Pitch Ratings + Other Pitching --}}
-            @if($isPitcher)
-            <div class="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
-                <table class="w-full text-sm">
-                    <thead>
-                        <tr class="text-[11px] text-gray-500 uppercase tracking-wider border-b border-gray-800">
-                            <th class="py-2 px-3 text-left">Pitch</th>
-                            <th class="py-2 px-3 text-center w-12">Cur</th>
-                            <th class="py-2 px-3 text-center w-12">Pot</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-800/40">
-                        @php
-                            $pitchNames = [
-                                'fastball'=>'Fastball','slider'=>'Slider','curveball'=>'Curveball',
-                                'screwball'=>'Screwball','forkball'=>'Forkball','changeup'=>'Changeup',
-                                'sinker'=>'Sinker','splitter'=>'Splitter','knuckleball'=>'Knuckleball',
-                                'cutter'=>'Cutter','circlechange'=>'Circle Change','knucklecurve'=>'Knuckle Curve',
-                            ];
-                        @endphp
-                        @foreach($pitchNames as $key => $label)
-                        @php
-                            $cur = $toScout($ratings->{'pitching_ratings_pitches_'.$key} ?? 0);
-                            $pot = $toScout($ratings->{'pitching_ratings_pitches_talent_'.$key} ?? 0);
-                        @endphp
-                        @if($cur > 20 || $pot > 20)
-                        <tr>
-                            <td class="py-1.5 px-3 text-gray-400 text-xs">{{ $label }}</td>
-                            <td class="py-1.5 px-3 text-center {{ $ratingColor($cur) }}">{{ $cur }}</td>
-                            <td class="py-1.5 px-3 text-center {{ $ratingColor($pot) }}">{{ $pot }}</td>
-                        </tr>
-                        @endif
-                        @endforeach
-                        <tr class="border-t border-gray-700">
-                            <td colspan="3" class="py-1 px-3"></td>
-                        </tr>
-                        <tr><td class="py-1.5 px-3 text-gray-400 text-xs">Velocity</td><td colspan="2" class="py-1.5 px-3 text-right text-white">{{ $ratings->pitching_ratings_misc_velocity }}-{{ $ratings->pitching_ratings_misc_velocity_target }} (Max)</td></tr>
-                        <tr><td class="py-1.5 px-3 text-gray-400 text-xs">GB %</td><td colspan="2" class="py-1.5 px-3 text-right text-white">{{ $ratings->pitching_ratings_misc_ground_fly }}%</td></tr>
-                        <tr><td class="py-1.5 px-3 text-gray-400 text-xs">Arm Slot</td><td colspan="2" class="py-1.5 px-3 text-right text-white">{{ $armSlots[$ratings->pitching_ratings_misc_arm_slot] ?? 'Normal' }}</td></tr>
-                        <tr><td class="py-1.5 px-3 text-gray-400 text-xs">Stamina</td><td colspan="2" class="py-1.5 px-3 text-right {{ $ratingColor($toScout($ratings->pitching_ratings_misc_stamina)) }}">{{ $toScout($ratings->pitching_ratings_misc_stamina) }}</td></tr>
-                        <tr><td class="py-1.5 px-3 text-gray-400 text-xs">Hold</td><td colspan="2" class="py-1.5 px-3 text-right {{ $ratingColor($toScout($ratings->pitching_ratings_misc_hold)) }}">{{ $toScout($ratings->pitching_ratings_misc_hold) }}</td></tr>
-                    </tbody>
-                </table>
-            </div>
-            @endif
 
         </div>
 
         {{-- OSA Overall --}}
-        <div class="mt-3 text-xs text-gray-500">
-            OSA Ovr <span class="text-white font-bold">{{ $toScout($ratings->overall) }}</span>
-            Pot <span class="text-white font-bold">{{ $toScout($ratings->talent) }}</span>
+        @php
+            $osaOvr = ($ratings->overall_rating ?? 0) / 2;
+            $osaPot = ($ratings->talent_rating ?? 0) / 2;
+            $renderStars = function($stars) {
+                $html = '';
+                $full = (int)floor($stars);
+                $half = ($stars - $full) >= 0.5;
+                $empty = 5 - $full - ($half ? 1 : 0);
+                for ($i = 0; $i < $full; $i++) $html .= '<span class="text-yellow-400">&#9733;</span>';
+                if ($half) $html .= '<span style="position:relative;display:inline-block;color:#374151">&#9733;<span style="position:absolute;left:0;top:0;overflow:hidden;width:50%;color:#facc15">&#9733;</span></span>';
+                for ($i = 0; $i < $empty; $i++) $html .= '<span class="text-gray-700">&#9733;</span>';
+                return $html;
+            };
+        @endphp
+        <div class="mt-5 flex items-center gap-8">
+            <div class="text-sm">
+                <span class="text-gray-500">Overall</span>
+                <span class="ml-2 text-lg">{!! $renderStars($osaOvr) !!}</span>
+            </div>
+            <div class="text-sm">
+                <span class="text-gray-500">Potential</span>
+                <span class="ml-2 text-lg">{!! $renderStars($osaPot) !!}</span>
+            </div>
         </div>
     </section>
     @else
