@@ -11,6 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasTable('news_sources')) return;
+
         // News sources: league-wide or per-team beat writers
         Schema::create('news_sources', function (Blueprint $table) {
             $table->increments('source_id');

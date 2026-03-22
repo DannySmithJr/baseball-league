@@ -11,6 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasTable('ccps')) return;
+
         Schema::create('ccps', function (Blueprint $table) {
             $table->id('ccp_id');
             $table->unsignedBigInteger('user_id');

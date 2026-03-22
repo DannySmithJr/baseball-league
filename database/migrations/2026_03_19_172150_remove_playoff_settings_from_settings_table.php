@@ -11,6 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (!Schema::hasColumn('settings', 'playoff_division_winners')) return;
+
         Schema::table('settings', function (Blueprint $table) {
             $table->dropColumn(['playoff_division_winners', 'playoff_wildcards']);
         });

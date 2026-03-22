@@ -8,6 +8,8 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasTable('league_player_awards')) return;
+
         Schema::create('league_player_awards', function (Blueprint $table) {
             $table->id();
             $table->unsignedInteger('player_id');          // OOTP player_id

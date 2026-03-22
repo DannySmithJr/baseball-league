@@ -11,6 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasColumn('settings', 'playoff_division_winners')) return;
+
         Schema::table('settings', function (Blueprint $table) {
             $table->boolean('playoff_division_winners')->default(true)->after('season');
             $table->tinyInteger('playoff_wildcards')->default(0)->after('playoff_division_winners');

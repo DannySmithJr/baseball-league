@@ -14,6 +14,8 @@ return new class extends Migration
         Schema::dropIfExists('gm_teams');
         Schema::dropIfExists('gm_requests');
 
+        if (Schema::hasTable('gms')) return;
+
         Schema::create('gms', function (Blueprint $table) {
             $table->increments('gm_id');
             $table->unsignedInteger('team_id');

@@ -11,6 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasColumn('settings', 'season')) return;
+
         Schema::table('settings', function (Blueprint $table) {
             $table->unsignedSmallInteger('season')->default(1)->after('ootp_last_import');
             $table->dateTime('next_sim')->nullable()->after('season');

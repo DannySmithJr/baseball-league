@@ -11,6 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasTable('stream_schedules')) return;
+
         Schema::create('stream_schedules', function (Blueprint $table) {
             $table->id();
             $table->tinyInteger('day_of_week'); // 0=Sun, 1=Mon, ..., 6=Sat

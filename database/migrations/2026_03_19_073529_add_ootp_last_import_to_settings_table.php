@@ -11,6 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasColumn('settings', 'ootp_last_import')) return;
+
         Schema::table('settings', function (Blueprint $table) {
             $table->timestamp('ootp_last_import')->nullable()->after('youtube_url');
         });
