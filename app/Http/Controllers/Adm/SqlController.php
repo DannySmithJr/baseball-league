@@ -66,7 +66,21 @@ class SqlController extends Controller
                     'size' => filesize($f),
                     'modified' => filemtime($f),
                 ])
-                ->sortByDesc('modified')
+                ->sort(function($a, $b) {
+                    // Extract base name and split number for proper ordering
+                    // e.g. "players_at_bat_batting_stats_3.mysql.sql" -> base="players_at_bat_batting_stats", num=3
+                    $parse = function($name) {
+                        $name = str_replace('.mysql.sql', '', $name);
+                        if (preg_match('/^(.+?)_(\d+)$/', $name, $m)) {
+                            return [$m[1], (int)$m[2]];
+                        }
+                        return [$name, -1]; // base file sorts first
+                    };
+                    [$baseA, $numA] = $parse($a['name']);
+                    [$baseB, $numB] = $parse($b['name']);
+                    $cmp = strcmp($baseA, $baseB);
+                    return $cmp !== 0 ? $cmp : $numA <=> $numB;
+                })
                 ->values()
                 ->all();
         }
