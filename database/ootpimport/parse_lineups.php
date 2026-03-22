@@ -1,22 +1,46 @@
 <?php
 /**
  * Parse starting lineups and pitching staff from OOTP almanac HTML team pages.
- * Reads /public/reports/teams/team_*.html and generates:
+ *
+ * On dev: auto-detects OOTP almanac directory (newest almanac_YYYY).
+ * On live: reads from public/reports/teams/
+ *
+ * Generates:
  *   - team_starting_lineups.sql
  *   - team_pitching_staff.sql
  *
  * Usage: php parse_lineups.php
  */
 
-$reportsDir = __DIR__ . '/../../public/reports/teams';
+$reportsDir = null;
 $lineupFile = __DIR__ . '/team_starting_lineups.sql';
 $staffFile  = __DIR__ . '/team_pitching_staff.sql';
 
+// Dev: auto-detect from OOTP saved game directory
+$ootpBase = 'C:/Users/danny/Documents/Out of the Park Developments/OOTP Baseball 27/saved_games/sMLB.lg/news';
+if (is_dir($ootpBase)) {
+    // Find newest almanac_YYYY directory
+    $almanacs = glob($ootpBase . '/almanac_*', GLOB_ONLYDIR);
+    if (!empty($almanacs)) {
+        usort($almanacs, fn($a, $b) => basename($b) <=> basename($a)); // newest first
+        $reportsDir = $almanacs[0] . '/teams';
+        echo "Using OOTP almanac: " . basename($almanacs[0]) . "\n";
+    }
+}
+
+// Fallback: public/reports/teams/
+if (!$reportsDir || !is_dir($reportsDir)) {
+    $reportsDir = __DIR__ . '/../../public/reports/teams';
+}
+
 if (!is_dir($reportsDir)) {
-    echo "Reports directory not found: {$reportsDir}\n";
-    echo "Place the OOTP almanac files in public/reports/ first.\n";
+    echo "Reports directory not found.\n";
+    echo "Expected OOTP at: {$ootpBase}/almanac_YYYY/teams/\n";
+    echo "Or: public/reports/teams/\n";
     exit(1);
 }
+
+echo "Reading from: {$reportsDir}\n";
 
 $files = glob($reportsDir . '/team_[0-9]*.html');
 $files = array_filter($files, fn($f) => preg_match('/team_\d+\.html$/', basename($f)));
