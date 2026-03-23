@@ -69,11 +69,13 @@ class GameController extends Controller
             }
         }
         $seasonErrors = $ootp->playerSeasonErrorTotals(array_unique($errorPlayerIds), $year);
+        $atBatLogs    = $ootp->gameAtBatLogs($id);
 
         return view('games.show', compact(
             'game', 'lineScore', 'boxBatting', 'boxPitching', 'atBats',
             'teamLogos', 'homeAwayRecs', 'batSeasonStats',
-            'gameErrorData', 'seasonErrors', 'gameLOB', 'gameDoublePlays'
+            'gameErrorData', 'seasonErrors', 'gameLOB', 'gameDoublePlays',
+            'atBatLogs'
         ));
     }
 
