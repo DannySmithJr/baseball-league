@@ -74,6 +74,8 @@ class DeployLineups extends Command
             'ALTER TABLE players_game_batting ADD INDEX idx_pgb_game (game_id)',
             'ALTER TABLE players_game_pitching_stats ADD INDEX idx_pgps_game (game_id)',
             'ALTER TABLE games_score ADD INDEX idx_gs_game (game_id)',
+            'ALTER TABLE games ADD INDEX idx_games_id (game_id)',
+            'ALTER TABLE players_career_batting_stats ADD INDEX idx_pcbs_pid_year (player_id, year, split_id)',
         ];
         foreach ($indexes as $sql) {
             try { DB::statement($sql); } catch (\Throwable $e) { /* index may already exist */ }
