@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Services\OotpService;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class PlayerController extends Controller
@@ -36,6 +37,12 @@ class PlayerController extends Controller
     /** Overview tab — season stats + career stats. */
     public function show(int $id, OotpService $ootp)
     {
+        $html = Cache::remember("playerPage.{$id}", 3600, fn () => $this->_playerShow($id, $ootp)->render());
+        return response($html);
+    }
+
+    private function _playerShow(int $id, OotpService $ootp)
+    {
         $base = $this->baseData($id, $ootp);
 
         $mlbLeaders = $ootp->mlbLeaderValues();
@@ -65,6 +72,14 @@ class PlayerController extends Controller
 
     /** Stats tab — full season + career tables. */
     public function stats(int $id, OotpService $ootp)
+    {
+        $type = request('type', '');
+        $level = (int) request('level', 1);
+        $html = Cache::remember("playerStats.{$id}.{$type}.{$level}", 3600, fn () => $this->_playerStats($id, $ootp)->render());
+        return response($html);
+    }
+
+    private function _playerStats(int $id, OotpService $ootp)
     {
         $base = $this->baseData($id, $ootp);
 
@@ -108,6 +123,12 @@ class PlayerController extends Controller
 
     /** Ratings tab. */
     public function ratings(int $id, OotpService $ootp)
+    {
+        $html = Cache::remember("playerRatings.{$id}", 3600, fn () => $this->_playerRatings($id, $ootp)->render());
+        return response($html);
+    }
+
+    private function _playerRatings(int $id, OotpService $ootp)
     {
         $base = $this->baseData($id, $ootp);
         $ratings = DB::table('players_scouted_ratings')->where('player_id', $id)->first();

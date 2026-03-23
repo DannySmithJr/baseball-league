@@ -4,11 +4,21 @@ namespace App\Http\Controllers;
 
 use App\Services\OotpService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class ScheduleController extends Controller
 {
     public function __invoke(Request $request, OotpService $ootp)
+    {
+        $teamId = max(0, (int) $request->query('team', 0));
+        $date   = $request->query('date', $ootp->gameDate() ?? date('Y-m-d'));
+        $cacheKey = "schedule.{$date}.{$teamId}";
+        $html = Cache::remember($cacheKey, 3600, fn () => $this->_invoke($request, $ootp)->render());
+        return response($html);
+    }
+
+    private function _invoke(Request $request, OotpService $ootp)
     {
         $teamId = max(0, (int) $request->query('team', 0));
 

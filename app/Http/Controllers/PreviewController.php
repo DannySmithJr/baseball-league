@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Services\OotpService;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class PreviewController extends Controller
@@ -10,6 +11,12 @@ class PreviewController extends Controller
     public function __construct(private OotpService $ootp) {}
 
     public function __invoke()
+    {
+        $html = Cache::remember('previewPage', 3600, fn () => $this->_invoke()->render());
+        return response($html);
+    }
+
+    private function _invoke()
     {
         $firstUpcoming = DB::table('games')->where('played', 0)->orderBy('date')->value('date');
         $lastUpcoming  = date('Y-m-d', strtotime($firstUpcoming . ' +6 days'));
