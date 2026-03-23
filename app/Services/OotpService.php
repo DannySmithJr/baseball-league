@@ -2883,43 +2883,66 @@ class OotpService
         // Build sequential ordering from game_logs (authoritative game order).
         // "Batting:" and "Pinch Hitting:" type=2 entries, in line order, tell us
         // exactly which player_id came up to bat and when.
+        // Track inning/half so we can match at-bats precisely when a player
+        // bats multiple times in the same half-inning (batting around).
         $logRows = $this->safeQuery(fn () =>
             DB::table('game_logs')
                 ->where('game_id', $gameId)
-                ->where('type', 2)
+                ->whereIn('type', [1, 2])
                 ->orderBy('line')
-                ->get(['text'])
+                ->get(['type', 'text'])
         ) ?? collect();
 
-        $seqByPlayer = [];   // player_id => [globalSeq, ...]
-        $globalSeq   = 0;
+        // Build sequence: each batting entry gets a globalSeq keyed by (player_id, inning, half, occurrence)
+        $seqByKey  = [];   // "pid_inning_half_N" => globalSeq
+        $globalSeq = 0;
+        $curInning = 1;
+        $curHalf   = 'top';
+        $halfCount = [];   // "pid_inning_half" => count of appearances so far
         foreach ($logRows as $log) {
+            if ($log->type == 1) {
+                // Inning change markers
+                if (preg_match('/Top of the (\d+)/i', $log->text, $m)) {
+                    $curInning = (int)$m[1]; $curHalf = 'top';
+                } elseif (preg_match('/Bottom of the (\d+)/i', $log->text, $m)) {
+                    $curInning = (int)$m[1]; $curHalf = 'bottom';
+                }
+                continue;
+            }
             if (str_contains($log->text, 'Batting:') || str_contains($log->text, 'Pinch Hitting:')) {
                 if (preg_match('/player_(\d+)\.html/', $log->text, $m)) {
-                    $seqByPlayer[(int)$m[1]][] = $globalSeq++;
+                    $pid = (int)$m[1];
+                    $baseKey = $pid . '_' . $curInning . '_' . $curHalf;
+                    $n = $halfCount[$baseKey] ?? 0;
+                    $seqByKey[$baseKey . '_' . $n] = $globalSeq++;
+                    $halfCount[$baseKey] = $n + 1;
                 }
             }
         }
 
-        // Pre-sort rows by inning then team (away first) so that for any player
-        // who bats multiple times, their Nth row aligns with their Nth game_logs entry.
+        // Match each DB at-bat row to its game_logs sequence.
+        // Sort DB rows by run_diff within each (inning, half) group first,
+        // so occurrence 0 = earliest at-bat for that player in that half-inning.
         $rowsArr = $rows->all();
         usort($rowsArr, function ($a, $b) use ($awayTeamId) {
-            if ((int)$a->inning !== (int)$b->inning) {
-                return (int)$a->inning <=> (int)$b->inning;
-            }
-            $aAway = (int)$a->team_id === $awayTeamId ? 0 : 1;
-            $bAway = (int)$b->team_id === $awayTeamId ? 0 : 1;
-            return $aAway <=> $bAway;
+            $aHalf = (int)$a->team_id === $awayTeamId ? 0 : 1;
+            $bHalf = (int)$b->team_id === $awayTeamId ? 0 : 1;
+            $aSort = (int)$a->inning * 2 + $aHalf;
+            $bSort = (int)$b->inning * 2 + $bHalf;
+            if ($aSort !== $bSort) return $aSort <=> $bSort;
+            // Within same half-inning, sort by run_diff to get chronological order
+            return abs((int)$a->run_diff) <=> abs((int)$b->run_diff);
         });
 
-        // Assign each at-bat its sequential position using a per-player cursor.
+        // Assign sequences using per-(player, inning, half) cursor
         $seqCursor = [];
         foreach ($rowsArr as $ab) {
-            $pid = (int)$ab->player_id;
-            $cur = $seqCursor[$pid] ?? 0;
-            $ab->_seq = $seqByPlayer[$pid][$cur] ?? 99999;
-            $seqCursor[$pid] = $cur + 1;
+            $pid  = (int)$ab->player_id;
+            $half = (int)$ab->team_id === $awayTeamId ? 'top' : 'bottom';
+            $baseKey = $pid . '_' . (int)$ab->inning . '_' . $half;
+            $n = $seqCursor[$baseKey] ?? 0;
+            $ab->_seq = $seqByKey[$baseKey . '_' . $n] ?? 99999;
+            $seqCursor[$baseKey] = $n + 1;
         }
         usort($rowsArr, fn ($a, $b) => $a->_seq <=> $b->_seq);
 
