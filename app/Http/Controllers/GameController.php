@@ -9,14 +9,14 @@ class GameController extends Controller
 {
     public function show(int $id, OotpService $ootp)
     {
-        $html = Cache::remember("gamePage.{$id}", 3600, fn () => $this->_gameShow($id, $ootp)->render());
+        $game = $ootp->game($id);
+        if (!$game) abort(404);
+        $html = Cache::remember("gamePage.{$id}", 3600, fn () => $this->_gameShow($id, $game, $ootp)->render());
         return response($html);
     }
 
-    private function _gameShow(int $id, OotpService $ootp)
+    private function _gameShow(int $id, object $game, OotpService $ootp)
     {
-        $game = $ootp->game($id);
-        if (!$game) abort(404);
 
         $lineScore   = $ootp->gameInningScores($id);
         $boxBatting  = $ootp->gameBoxBatting($id);
@@ -100,14 +100,14 @@ class GameController extends Controller
 
     public function logs(int $id, OotpService $ootp)
     {
-        $html = Cache::remember("gameLogsPage.{$id}", 3600, fn () => $this->_gameLogs($id, $ootp)->render());
+        $game = $ootp->game($id);
+        if (!$game) abort(404);
+        $html = Cache::remember("gameLogsPage.{$id}", 3600, fn () => $this->_gameLogs($id, $game, $ootp)->render());
         return response($html);
     }
 
-    private function _gameLogs(int $id, OotpService $ootp)
+    private function _gameLogs(int $id, object $game, OotpService $ootp)
     {
-        $game = $ootp->game($id);
-        if (!$game) abort(404);
 
         $atBats = $ootp->gameAtBats($id, (int) $game->away_team, (int) $game->home_team);
 

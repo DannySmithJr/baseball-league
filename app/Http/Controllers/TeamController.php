@@ -30,14 +30,14 @@ class TeamController extends Controller
 
     public function show(int $id)
     {
-        $html = Cache::remember("teamPage.{$id}", 3600, fn () => $this->_teamShow($id)->render());
+        $team = $this->ootp->teamWithDetails($id);
+        if (!$team) return redirect()->route('standings')->with('error', 'Team not found.');
+        $html = Cache::remember("teamPage.{$id}", 3600, fn () => $this->_teamShow($id, $team)->render());
         return response($html);
     }
 
-    private function _teamShow(int $id)
+    private function _teamShow(int $id, object $team)
     {
-        $team = $this->ootp->teamWithDetails($id);
-        if (!$team) return redirect()->route('standings')->with('error', 'Team not found.');
 
         $record     = $this->ootp->teamRecord($id);
         $roster     = $this->ootp->teamRoster($id);

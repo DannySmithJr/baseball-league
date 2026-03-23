@@ -37,6 +37,8 @@ class PlayerController extends Controller
     /** Overview tab — season stats + career stats. */
     public function show(int $id, OotpService $ootp)
     {
+        $player = $ootp->playerWithTeam($id);
+        if (!$player) abort(404);
         $html = Cache::remember("playerPage.{$id}", 3600, fn () => $this->_playerShow($id, $ootp)->render());
         return response($html);
     }
@@ -73,6 +75,7 @@ class PlayerController extends Controller
     /** Stats tab — full season + career tables. */
     public function stats(int $id, OotpService $ootp)
     {
+        if (!$ootp->playerWithTeam($id)) abort(404);
         $type = request('type', '');
         $level = (int) request('level', 1);
         $html = Cache::remember("playerStats.{$id}.{$type}.{$level}", 3600, fn () => $this->_playerStats($id, $ootp)->render());
@@ -124,6 +127,7 @@ class PlayerController extends Controller
     /** Ratings tab. */
     public function ratings(int $id, OotpService $ootp)
     {
+        if (!$ootp->playerWithTeam($id)) abort(404);
         $html = Cache::remember("playerRatings.{$id}", 3600, fn () => $this->_playerRatings($id, $ootp)->render());
         return response($html);
     }
