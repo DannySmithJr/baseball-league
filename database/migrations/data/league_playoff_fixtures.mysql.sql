@@ -2,7 +2,7 @@
 # 
 # Dumping data for league_playoff_fixtures.mysql.sql
 # Game name: sMLB
-# Game date: 1970-07-13
+# Game date: 1970-07-20
 # 
 DROP TABLE IF EXISTS `league_playoff_fixtures`;
 CREATE TABLE IF NOT EXISTS `league_playoff_fixtures` (`league_id` INT, `team_id0` INT, `team_id1` INT, `winner` INT, `finished` TINYINT, `best_of` SMALLINT, `played` SMALLINT, `round` SMALLINT, `result0` SMALLINT, `result1` SMALLINT);

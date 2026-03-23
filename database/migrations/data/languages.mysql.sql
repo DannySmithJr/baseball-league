@@ -2,7 +2,7 @@
 # 
 # Dumping data for languages.mysql.sql
 # Game name: sMLB
-# Game date: 1970-07-13
+# Game date: 1970-07-20
 # 
 DROP TABLE IF EXISTS `languages`;
 CREATE TABLE IF NOT EXISTS `languages` (`language_id` INT, `name` VARCHAR(50), PRIMARY KEY (`language_id`));

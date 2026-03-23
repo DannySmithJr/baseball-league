@@ -2,7 +2,7 @@
 # 
 # Dumping data for continents.mysql.sql
 # Game name: sMLB
-# Game date: 1970-07-13
+# Game date: 1970-07-20
 # 
 DROP TABLE IF EXISTS `continents`;
 CREATE TABLE IF NOT EXISTS `continents` (`continent_id` INT, `name` VARCHAR(50), `abbreviation` VARCHAR(50), `demonym` VARCHAR(50), `population` INT, `main_language_id` INT, PRIMARY KEY (`continent_id`));

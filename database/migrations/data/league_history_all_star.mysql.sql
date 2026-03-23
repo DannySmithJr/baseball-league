@@ -2,7 +2,7 @@
 # 
 # Dumping data for league_history_all_star.mysql.sql
 # Game name: sMLB
-# Game date: 1970-07-13
+# Game date: 1970-07-20
 # 
 DROP TABLE IF EXISTS `league_history_all_star`;
 CREATE TABLE IF NOT EXISTS `league_history_all_star` (`league_id` INT, `sub_league_id` INT, `year` INT, `all_star_pos` INT, `all_star` INT);

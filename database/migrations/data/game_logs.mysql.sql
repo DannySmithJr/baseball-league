@@ -2,7 +2,7 @@
 # 
 # Dumping data for game_logs.mysql.sql
 # Game name: sMLB
-# Game date: 1970-07-13
+# Game date: 1970-07-20
 # 
 DROP TABLE IF EXISTS `game_logs`;
 CREATE TABLE IF NOT EXISTS `game_logs` (`game_id` INT, `type` SMALLINT, `line` INT, `text` VARCHAR(255));

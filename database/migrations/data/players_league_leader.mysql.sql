@@ -2,7 +2,7 @@
 # 
 # Dumping data for players_league_leader.mysql.sql
 # Game name: sMLB
-# Game date: 1970-07-13
+# Game date: 1970-07-20
 # 
 DROP TABLE IF EXISTS `players_league_leader`;
 CREATE TABLE IF NOT EXISTS `players_league_leader` (`player_id` INT, `league_id` INT, `sub_league_id` SMALLINT, `year` SMALLINT, `category` SMALLINT, `place` SMALLINT, `amount` DOUBLE);

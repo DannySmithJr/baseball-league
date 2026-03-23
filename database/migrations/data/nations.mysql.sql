@@ -2,7 +2,7 @@
 # 
 # Dumping data for nations.mysql.sql
 # Game name: sMLB
-# Game date: 1970-07-13
+# Game date: 1970-07-20
 # 
 DROP TABLE IF EXISTS `nations`;
 CREATE TABLE IF NOT EXISTS `nations` (`nation_id` INT, `name` VARCHAR(50), `short_name` VARCHAR(50), `abbreviation` VARCHAR(50), `demonym` VARCHAR(50), `population` INT, `gender` INT, `baseball_quality` INT, `continent_id` INT, `main_language_id` INT, `quality_total` INT, `capital_id` INT, `use_hardcoded_ml_player_origins` TINYINT, `this_is_the_usa` TINYINT, PRIMARY KEY (`nation_id`));

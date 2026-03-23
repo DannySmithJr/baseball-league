@@ -2,7 +2,7 @@
 # 
 # Dumping data for divisions.mysql.sql
 # Game name: sMLB
-# Game date: 1970-07-13
+# Game date: 1970-07-20
 # 
 DROP TABLE IF EXISTS `divisions`;
 CREATE TABLE IF NOT EXISTS `divisions` (`league_id` INT, `sub_league_id` INT, `division_id` INT, `name` VARCHAR(50), `gender` INT, PRIMARY KEY (`league_id`, `sub_league_id`, `division_id`));

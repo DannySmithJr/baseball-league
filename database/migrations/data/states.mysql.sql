@@ -2,7 +2,7 @@
 # 
 # Dumping data for states.mysql.sql
 # Game name: sMLB
-# Game date: 1970-07-13
+# Game date: 1970-07-20
 # 
 DROP TABLE IF EXISTS `states`;
 CREATE TABLE IF NOT EXISTS `states` (`state_id` INT, `nation_id` INT, `name` VARCHAR(50), `abbreviation` VARCHAR(50), `population` INT, `main_language_id` INT, PRIMARY KEY (`state_id`, `nation_id`));

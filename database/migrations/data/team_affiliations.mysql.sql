@@ -2,7 +2,7 @@
 # 
 # Dumping data for team_affiliations.mysql.sql
 # Game name: sMLB
-# Game date: 1970-07-13
+# Game date: 1970-07-20
 # 
 DROP TABLE IF EXISTS `team_affiliations`;
 CREATE TABLE IF NOT EXISTS `team_affiliations` (`team_id` INT, `affiliated_team_id` INT, PRIMARY KEY (`team_id`, `affiliated_team_id`));

@@ -2,7 +2,7 @@
 # 
 # Dumping data for human_managers.mysql.sql
 # Game name: sMLB
-# Game date: 1970-07-13
+# Game date: 1970-07-20
 # 
 DROP TABLE IF EXISTS `human_managers`;
 CREATE TABLE IF NOT EXISTS `human_managers` (`human_manager_id` INT, `is_commish` TINYINT, `first_name` VARCHAR(50), `last_name` VARCHAR(50), `nick_name` VARCHAR(50), `age` SMALLINT, `date_of_birth` DATE, `city_of_birth_id` INT, `nation_id` INT, `second_nation_id` INT, `weight` SMALLINT, `height` SMALLINT, `retired` TINYINT, `free_agent` TINYINT, `league_id` INT, `last_league_id` INT, `team_id` INT, `last_team_id` INT, `organization_id` INT, `last_organization_id` INT, `language_ids0` INT, `language_ids1` INT, `uniform_number` SMALLINT, `experience` SMALLINT, `person_type` SMALLINT, `bats` SMALLINT, `throws` SMALLINT, `personality_greed` SMALLINT, `personality_loyalty` SMALLINT, `personality_play_for_winner` SMALLINT, `personality_work_ethic` SMALLINT, `personality_intelligence` SMALLINT, `personality_leader` SMALLINT);

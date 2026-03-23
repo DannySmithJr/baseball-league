@@ -2,7 +2,7 @@
 # 
 # Dumping data for team_roster_staff.mysql.sql
 # Game name: sMLB
-# Game date: 1970-07-13
+# Game date: 1970-07-20
 # 
 DROP TABLE IF EXISTS `team_roster_staff`;
 CREATE TABLE IF NOT EXISTS `team_roster_staff` (`team_id` INT, `head_scout` INT, `manager` INT, `general_manager` INT, `pitching_coach` INT, `hitting_coach` INT, `bench_coach` INT, `owner` INT, `doctor` INT, `first_base_coach` INT, `third_base_coach` INT, PRIMARY KEY (`team_id`));
