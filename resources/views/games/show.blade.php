@@ -125,69 +125,118 @@
     }
     // phLetters: player_id → letter (a, b, c...) per team
     // phNotes:   team_id  → array of footnote strings
-    // Covers both pinch hitters AND defensive replacements
+    // Covers both pinch hitters AND defensive replacements, in chronological order
+    // using game_logs as the authoritative substitution timeline.
     $phLetters = [$awayId => [], $homeId => []];
     $phNotes   = [$awayId => [], $homeId => []];
-    $phSeen    = [];
     $phAlpha   = [$awayId => 0, $homeId => 0];
+    $defSubPlayers = [$awayId => [], $homeId => []];
 
-    // First pass: assign letters to pinch hitters from at-bat data
-    foreach ($atBats as $half) {
-        foreach ($half['atbats'] as $ab) {
-            if (!(int)$ab->pinch) continue;
-            $tid   = (int)$ab->team_id;
-            $pid   = (int)$ab->player_id;
-            $spot  = (int)$ab->spot;
-            $inn   = (int)$ab->inning;
-            $key   = $tid . '_' . $pid . '_' . $inn;
-            if (isset($phSeen[$key])) continue;
-            $phSeen[$key] = true;
-            if (!isset($phLetters[$tid][$pid])) {
-                $phLetters[$tid][$pid] = chr(ord('a') + $phAlpha[$tid]++);
+    // Build starter set (first player in each batting slot)
+    $starters = [$awayId => [], $homeId => []];
+    foreach ([$awayId, $homeId] as $_tid) {
+        foreach ($spotPlayers[$_tid] as $_slot => $_players) {
+            if (!empty($_players)) {
+                $starters[$_tid][(int)$_players[0]->player_id] = true;
             }
-            $letter   = $phLetters[$tid][$pid];
-            $phName   = $fmtIni($ab->batter_first, $ab->batter_last);
-            $original = null;
-            $prevInSlot = null;
-            foreach ($spotPlayers[$tid][$spot] ?? [] as $_b) {
-                if ((int)$_b->player_id === $pid) {
-                    if ($prevInSlot) $original = $fmtIni($prevInSlot->first_name, $prevInSlot->last_name);
-                    break;
-                }
-                $prevInSlot = $_b;
-            }
-            $phNotes[$tid][] = $letter . ' - ' . $phName . ($original ? ' pinch hit for ' . $original : ' (PH)') . ' in the ' . $innLabel($inn);
         }
     }
 
-    // Second pass: detect defensive replacements — non-starter, non-PH players
-    // who appear after a PH in the same batting slot
-    $defSubPlayers = [$awayId => [], $homeId => []]; // player_id → true
+    // Build player_id → name map and player_id → slot/position from box batting
+    $_pidName = [];
+    $_pidSlot = [];
+    $_pidPos  = [];
+    foreach ([$awayId, $homeId] as $_tid) {
+        foreach ($boxBatting[$_tid] ?? [] as $_b) {
+            $_pidName[(int)$_b->player_id] = $fmtIni($_b->first_name, $_b->last_name);
+            $_pidSlot[(int)$_b->player_id] = (int)$_b->bat_order;
+            $_pidPos[(int)$_b->player_id]  = $fieldingPositions[(int)$_b->position] ?? '';
+        }
+    }
+
+    // Map player_id → team_id from box batting
+    $_pidTeam = [];
+    foreach ([$awayId, $homeId] as $_tid) {
+        foreach ($boxBatting[$_tid] ?? [] as $_b) {
+            $_pidTeam[(int)$_b->player_id] = $_tid;
+        }
+    }
+
+    // Parse game_logs chronologically for PH and defensive sub entries
+    // Also track which player was replaced using slot history
+    $_slotCurrent = [$awayId => [], $homeId => []]; // slot → current player_id
     foreach ([$awayId, $homeId] as $_tid) {
         foreach ($spotPlayers[$_tid] as $_slot => $_players) {
-            $sawPH = false;
-            $prevPlayer = null;
-            foreach ($_players as $_idx => $_b) {
-                $_pid = (int)$_b->player_id;
-                if (isset($phLetters[$_tid][$_pid])) {
-                    $sawPH = true;
-                    $prevPlayer = $_b;
-                    continue;
-                }
-                // First player in slot is the starter — skip
-                if ($_idx === 0) { $prevPlayer = $_b; continue; }
-                // Non-PH after a PH (or after another def sub) = defensive replacement
-                if ($sawPH && !isset($phLetters[$_tid][$_pid])) {
-                    $phLetters[$_tid][$_pid] = chr(ord('a') + $phAlpha[$_tid]++);
-                    $defSubPlayers[$_tid][$_pid] = true;
-                    $letter = $phLetters[$_tid][$_pid];
-                    $defName = $fmtIni($_b->first_name, $_b->last_name);
-                    $replacedName = $prevPlayer ? $fmtIni($prevPlayer->first_name, $prevPlayer->last_name) : null;
-                    $defPos = $fieldingPositions[(int)$_b->position] ?? '';
-                    $phNotes[$_tid][] = $letter . ' - ' . $defName . ($replacedName ? ' entered as defensive replacement' . ($defPos ? ' at ' . $defPos : '') . ' for ' . $replacedName : ' (defensive replacement)');
-                }
-                $prevPlayer = $_b;
+            if (!empty($_players)) {
+                $_slotCurrent[$_tid][$_slot] = (int)$_players[0]->player_id;
             }
+        }
+    }
+
+    $curInning = 1;
+    foreach ($atBatLogs as $_abl) {
+        $curInning = $_abl['inning'] ?? $curInning;
+    }
+
+    // Use game_logs type=2 entries in line order for chronological subs
+    $_subLogs = \Illuminate\Support\Facades\DB::table('game_logs')
+        ->where('game_id', $game->game_id)
+        ->where('type', 2)
+        ->orderBy('line')
+        ->get(['line', 'text']);
+
+    $_curInning = 1;
+    $_curHalf = 'top';
+    // Also get type=1 for inning tracking
+    $_allLogs = \Illuminate\Support\Facades\DB::table('game_logs')
+        ->where('game_id', $game->game_id)
+        ->whereIn('type', [1, 2])
+        ->orderBy('line')
+        ->get(['line', 'type', 'text']);
+
+    foreach ($_allLogs as $_log) {
+        if ($_log->type == 1) {
+            if (preg_match('/Top of the (\d+)/i', $_log->text, $_m)) { $_curInning = (int)$_m[1]; $_curHalf = 'top'; }
+            elseif (preg_match('/Bottom of the (\d+)/i', $_log->text, $_m)) { $_curInning = (int)$_m[1]; $_curHalf = 'bottom'; }
+            continue;
+        }
+
+        $cleanText = strip_tags($_log->text);
+
+        // Pinch hitter
+        if (str_contains($cleanText, 'Pinch Hitting:') && preg_match('/player_(\d+)\.html/', $_log->text, $_m)) {
+            $_pid = (int)$_m[1];
+            $_tid = $_pidTeam[$_pid] ?? null;
+            if (!$_tid || isset($phLetters[$_tid][$_pid])) continue;
+
+            $_slot = $_pidSlot[$_pid] ?? null;
+            $_replacedPid = $_slot ? ($_slotCurrent[$_tid][$_slot] ?? null) : null;
+            $_replacedName = $_replacedPid ? ($_pidName[$_replacedPid] ?? null) : null;
+
+            $phLetters[$_tid][$_pid] = chr(ord('a') + $phAlpha[$_tid]++);
+            $letter = $phLetters[$_tid][$_pid];
+            $phNotes[$_tid][] = $letter . ' - ' . ($_pidName[$_pid] ?? '?') . ($_replacedName ? ' pinch hit for ' . $_replacedName : ' (PH)') . ' in the ' . $innLabel($_curInning);
+
+            if ($_slot) $_slotCurrent[$_tid][$_slot] = $_pid;
+        }
+
+        // Defensive replacement: "Now in CF:", "Now at 1B:", etc.
+        if (preg_match('/Now (?:in|at) \w+/i', $cleanText) && preg_match('/player_(\d+)\.html/', $_log->text, $_m)) {
+            $_pid = (int)$_m[1];
+            $_tid = $_pidTeam[$_pid] ?? null;
+            if (!$_tid || isset($starters[$_tid][$_pid]) || isset($phLetters[$_tid][$_pid])) continue;
+
+            $_slot = $_pidSlot[$_pid] ?? null;
+            $_replacedPid = $_slot ? ($_slotCurrent[$_tid][$_slot] ?? null) : null;
+            $_replacedName = $_replacedPid ? ($_pidName[$_replacedPid] ?? null) : null;
+            $_defPos = $_pidPos[$_pid] ?? '';
+
+            $phLetters[$_tid][$_pid] = chr(ord('a') + $phAlpha[$_tid]++);
+            $defSubPlayers[$_tid][$_pid] = true;
+            $letter = $phLetters[$_tid][$_pid];
+            $phNotes[$_tid][] = $letter . ' - ' . ($_pidName[$_pid] ?? '?') . ($_replacedName ? ' entered as defensive replacement' . ($_defPos ? ' at ' . $_defPos : '') . ' for ' . $_replacedName : ' (defensive replacement)');
+
+            if ($_slot) $_slotCurrent[$_tid][$_slot] = $_pid;
         }
     }
 @endphp
