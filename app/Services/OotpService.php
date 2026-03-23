@@ -2064,6 +2064,21 @@ class OotpService
     }
 
     /**
+     * Game log entries for substitution detection (type 1+2).
+     * Returns collection of {line, type, text} ordered by line.
+     */
+    public function gameSubstitutionLogs(int $gameId): \Illuminate\Support\Collection
+    {
+        return $this->safeQuery(fn () =>
+            DB::table('game_logs')
+                ->where('game_id', $gameId)
+                ->whereIn('type', [1, 2])
+                ->orderBy('line')
+                ->get(['line', 'type', 'text'])
+        ) ?? collect();
+    }
+
+    /**
      * Parse game_logs to find per-player errors for each team.
      * Returns: [team_id => [player_id => error_count]]
      * Also returns player name info keyed by player_id.

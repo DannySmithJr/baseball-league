@@ -80,11 +80,14 @@ class GameController extends Controller
         }
         $pitSeasonStats = $ootp->playerSeasonPitchStats(array_unique($pitcherIds), $year, $game->date);
 
+        // Substitution logs for PH/defensive replacement detection (type 1+2)
+        $subLogs = $ootp->gameSubstitutionLogs($id);
+
         return view('games.show', compact(
             'game', 'lineScore', 'boxBatting', 'boxPitching', 'atBats',
             'teamLogos', 'homeAwayRecs', 'batSeasonStats',
             'gameErrorData', 'seasonErrors', 'gameLOB', 'gameDoublePlays',
-            'atBatLogs', 'pitSeasonStats'
+            'atBatLogs', 'pitSeasonStats', 'subLogs'
         ));
     }
 

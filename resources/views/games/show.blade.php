@@ -178,23 +178,11 @@
         $curInning = $_abl['inning'] ?? $curInning;
     }
 
-    // Use game_logs type=2 entries in line order for chronological subs
-    $_subLogs = \Illuminate\Support\Facades\DB::table('game_logs')
-        ->where('game_id', $game->game_id)
-        ->where('type', 2)
-        ->orderBy('line')
-        ->get(['line', 'text']);
-
+    // Use pre-loaded substitution logs for chronological ordering
     $_curInning = 1;
     $_curHalf = 'top';
-    // Also get type=1 for inning tracking
-    $_allLogs = \Illuminate\Support\Facades\DB::table('game_logs')
-        ->where('game_id', $game->game_id)
-        ->whereIn('type', [1, 2])
-        ->orderBy('line')
-        ->get(['line', 'type', 'text']);
 
-    foreach ($_allLogs as $_log) {
+    foreach ($subLogs as $_log) {
         if ($_log->type == 1) {
             if (preg_match('/Top of the (\d+)/i', $_log->text, $_m)) { $_curInning = (int)$_m[1]; $_curHalf = 'top'; }
             elseif (preg_match('/Bottom of the (\d+)/i', $_log->text, $_m)) { $_curInning = (int)$_m[1]; $_curHalf = 'bottom'; }
