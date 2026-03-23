@@ -95,6 +95,10 @@ class DeployLineups extends Command
             $this->info("Imported {$table}: {$count} rows");
         }
 
+        // Clear cached data after import
+        \Illuminate\Support\Facades\Cache::flush();
+        $this->info('Cache cleared');
+
         return 0;
     }
 }

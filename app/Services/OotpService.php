@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -1986,6 +1987,13 @@ class OotpService
     public function playerSeasonBatStats(array $playerIds, int $year): array
     {
         if (empty($playerIds)) return [];
+        sort($playerIds);
+        $cacheKey = 'batStats.' . md5(implode(',', $playerIds) . $year);
+        return Cache::remember($cacheKey, 3600, fn () => $this->_playerSeasonBatStats($playerIds, $year));
+    }
+
+    private function _playerSeasonBatStats(array $playerIds, int $year): array
+    {
         $rows = $this->safeQuery(fn () =>
             DB::table('players_career_batting_stats')
                 ->whereIn('player_id', $playerIds)
@@ -2032,6 +2040,13 @@ class OotpService
     public function playerSeasonPitchStats(array $playerIds, int $year, string $throughDate = null): array
     {
         if (empty($playerIds)) return [];
+        sort($playerIds);
+        $cacheKey = 'pitStats.' . md5(implode(',', $playerIds) . $year . $throughDate);
+        return Cache::remember($cacheKey, 3600, fn () => $this->_playerSeasonPitchStats($playerIds, $year, $throughDate));
+    }
+
+    private function _playerSeasonPitchStats(array $playerIds, int $year, string $throughDate = null): array
+    {
         $rows = $this->safeQuery(fn () =>
             DB::table('players_game_pitching_stats as ps')
                 ->join('games as g', 'g.game_id', '=', 'ps.game_id')
@@ -2069,6 +2084,11 @@ class OotpService
      */
     public function gameSubstitutionLogs(int $gameId): \Illuminate\Support\Collection
     {
+        return Cache::remember("subLogs.{$gameId}", 3600, fn () => $this->_gameSubstitutionLogs($gameId));
+    }
+
+    private function _gameSubstitutionLogs(int $gameId): \Illuminate\Support\Collection
+    {
         return $this->safeQuery(fn () =>
             DB::table('game_logs')
                 ->where('game_id', $gameId)
@@ -2084,6 +2104,11 @@ class OotpService
      * Also returns player name info keyed by player_id.
      */
     public function gameErrors(int $gameId, int $awayTeamId, int $homeTeamId): array
+    {
+        return Cache::remember("errors.{$gameId}", 3600, fn () => $this->_gameErrors($gameId, $awayTeamId, $homeTeamId));
+    }
+
+    private function _gameErrors(int $gameId, int $awayTeamId, int $homeTeamId): array
     {
         // Build position → first player map per team (fielding positions 1-9 only)
         $batters = $this->safeQuery(fn () =>
@@ -2167,6 +2192,11 @@ class OotpService
      */
     public function gameDoublePlays(int $gameId, int $awayTeamId, int $homeTeamId): array
     {
+        return Cache::remember("dp.{$gameId}", 3600, fn () => $this->_gameDoublePlays($gameId, $awayTeamId, $homeTeamId));
+    }
+
+    private function _gameDoublePlays(int $gameId, int $awayTeamId, int $homeTeamId): array
+    {
         // Position → last name map per team (last player at each position handles subs)
         $posMap = [$awayTeamId => [], $homeTeamId => []];
         $batRows = $this->safeQuery(fn () =>
@@ -2217,6 +2247,11 @@ class OotpService
      */
     public function gameLOB(int $gameId, int $awayTeamId, int $homeTeamId): array
     {
+        return Cache::remember("lob.{$gameId}", 3600, fn () => $this->_gameLOB($gameId, $awayTeamId, $homeTeamId));
+    }
+
+    private function _gameLOB(int $gameId, int $awayTeamId, int $homeTeamId): array
+    {
         $logs = $this->safeQuery(fn () =>
             DB::table('game_logs')
                 ->where('game_id', $gameId)
@@ -2247,6 +2282,11 @@ class OotpService
      * Home and road W/L records for all MLB teams — keyed by team_id.
      */
     public function teamHomeAwayRecords(): array
+    {
+        return Cache::remember('teamHAR', 3600, fn () => $this->_teamHomeAwayRecords());
+    }
+
+    private function _teamHomeAwayRecords(): array
     {
         $rows = $this->safeQuery(fn () =>
             DB::select("
@@ -2654,7 +2694,7 @@ class OotpService
     /** Full game row with team names and pitcher names. */
     public function game(int $gameId): ?object
     {
-        return $this->safeQuery(fn () =>
+        return Cache::remember("game.{$gameId}", 3600, fn () => $this->safeQuery(fn () =>
             DB::table('games as g')
                 ->join('teams as ht', 'g.home_team', '=', 'ht.team_id')
                 ->join('teams as at', 'g.away_team', '=', 'at.team_id')
@@ -2677,7 +2717,7 @@ class OotpService
                 )
                 ->where('g.game_id', $gameId)
                 ->first()
-        );
+        ));
     }
 
     /**
@@ -2685,6 +2725,11 @@ class OotpService
      * Returns ['away' => [1=>r, 2=>r, ...], 'home' => [...], 'max_inning' => n]
      */
     public function gameInningScores(int $gameId): array
+    {
+        return Cache::remember("lineScore.{$gameId}", 3600, fn () => $this->_gameInningScores($gameId));
+    }
+
+    private function _gameInningScores(int $gameId): array
     {
         $rows = $this->safeQuery(fn () =>
             DB::table('games_score')
@@ -2720,6 +2765,11 @@ class OotpService
      *              This correctly sequences the pitcher-chain: starter → PH → new-P → PH → new-P …
      */
     public function gameBoxBatting(int $gameId): array
+    {
+        return Cache::remember("boxBat.{$gameId}", 3600, fn () => $this->_gameBoxBatting($gameId));
+    }
+
+    private function _gameBoxBatting(int $gameId): array
     {
         // 1. Spot (batting slot) from at-bat stats for every player who had a plate appearance
         $spots = $this->safeQuery(fn () =>
@@ -2840,6 +2890,11 @@ class OotpService
      */
     public function gameBoxPitching(int $gameId): array
     {
+        return Cache::remember("boxPit.{$gameId}", 3600, fn () => $this->_gameBoxPitching($gameId));
+    }
+
+    private function _gameBoxPitching(int $gameId): array
+    {
         // Build pitcher appearance order from game_logs
         $gameRow = $this->safeQuery(fn () =>
             DB::table('games')->where('game_id', $gameId)->select('away_team','home_team')->first()
@@ -2915,6 +2970,11 @@ class OotpService
      * Ordered top-of-inning (away) before bottom (home).
      */
     public function gameAtBats(int $gameId, int $awayTeamId, int $homeTeamId): array
+    {
+        return Cache::remember("atBats.{$gameId}", 3600, fn () => $this->_gameAtBats($gameId, $awayTeamId, $homeTeamId));
+    }
+
+    private function _gameAtBats(int $gameId, int $awayTeamId, int $homeTeamId): array
     {
         $rows = $this->safeQuery(fn () =>
             DB::table('players_at_bat_batting_stats as ab')
@@ -3029,6 +3089,11 @@ class OotpService
      *   ['inning'=>n, 'half'=>'top'|'bottom', 'pitches'=>['0-0: Ball', ...]]
      */
     public function gameAtBatLogs(int $gameId): array
+    {
+        return Cache::remember("atBatLogs.{$gameId}", 3600, fn () => $this->_gameAtBatLogs($gameId));
+    }
+
+    private function _gameAtBatLogs(int $gameId): array
     {
         $rows = $this->safeQuery(fn () =>
             DB::table('game_logs')
