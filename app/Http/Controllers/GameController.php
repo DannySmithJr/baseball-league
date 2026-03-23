@@ -71,11 +71,20 @@ class GameController extends Controller
         $seasonErrors = $ootp->playerSeasonErrorTotals(array_unique($errorPlayerIds), $year);
         $atBatLogs    = $ootp->gameAtBatLogs($id);
 
+        // Season pitching ERA for all pitchers in this box score
+        $pitcherIds = [];
+        foreach ($boxPitching as $pitchers) {
+            foreach ($pitchers as $p) {
+                $pitcherIds[] = (int)$p->player_id;
+            }
+        }
+        $pitSeasonStats = $ootp->playerSeasonPitchStats(array_unique($pitcherIds), $year);
+
         return view('games.show', compact(
             'game', 'lineScore', 'boxBatting', 'boxPitching', 'atBats',
             'teamLogos', 'homeAwayRecs', 'batSeasonStats',
             'gameErrorData', 'seasonErrors', 'gameLOB', 'gameDoublePlays',
-            'atBatLogs'
+            'atBatLogs', 'pitSeasonStats'
         ));
     }
 

@@ -2025,6 +2025,44 @@ class OotpService
     }
 
     /**
+     * Season pitching stats (ERA, W, L, K) for a set of player IDs.
+     * Returns: [player_id => ['era' => '3.45', 'w' => 5, 'l' => 3, ...]]
+     */
+    public function playerSeasonPitchStats(array $playerIds, int $year): array
+    {
+        if (empty($playerIds)) return [];
+        $rows = $this->safeQuery(fn () =>
+            DB::table('players_career_pitching_stats')
+                ->whereIn('player_id', $playerIds)
+                ->where('year', $year)
+                ->where('split_id', 1)
+                ->select('player_id',
+                    DB::raw('SUM(outs) as outs'), DB::raw('SUM(er) as er'),
+                    DB::raw('SUM(w) as w'), DB::raw('SUM(l) as l'),
+                    DB::raw('SUM(k) as k'), DB::raw('SUM(bb) as bb'),
+                    DB::raw('SUM(s) as s'))
+                ->groupBy('player_id')
+                ->get()
+        ) ?? collect();
+
+        $result = [];
+        foreach ($rows as $r) {
+            $outs = (int)$r->outs;
+            $ip   = $outs / 3;
+            $era  = $ip > 0 ? ((int)$r->er / $ip) * 9 : 0;
+            $result[(int)$r->player_id] = [
+                'era' => number_format($era, 2),
+                'w'   => (int)$r->w,
+                'l'   => (int)$r->l,
+                'k'   => (int)$r->k,
+                's'   => (int)$r->s,
+                'ip'  => floor($outs / 3) . '.' . ($outs % 3),
+            ];
+        }
+        return $result;
+    }
+
+    /**
      * Parse game_logs to find per-player errors for each team.
      * Returns: [team_id => [player_id => error_count]]
      * Also returns player name info keyed by player_id.

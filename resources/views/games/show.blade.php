@@ -787,6 +787,8 @@
                             <th class="text-center px-1.5 py-1.5 font-medium">HR</th>
                             <th class="text-center px-1.5 py-1.5 font-medium">BF</th>
                             <th class="text-center px-1.5 py-1.5 font-medium">PI</th>
+                            <th class="text-center px-1.5 py-1.5 font-medium">ERA</th>
+                            <th class="text-center px-1.5 py-1.5 font-medium">sERA</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-800/40">
@@ -820,6 +822,9 @@
                             <td class="text-center px-1.5 py-1.5 {{ (int)$pit->hra > 0 ? 'text-red-400' : 'text-gray-600' }}">{{ $pit->hra ?: '·' }}</td>
                             <td class="text-center px-1.5 py-1.5 text-gray-500">{{ $pit->bf ?? '—' }}</td>
                             <td class="text-center px-1.5 py-1.5 text-gray-500">{{ $pit->pi ?? '—' }}</td>
+                            <td class="text-center px-1.5 py-1.5 text-gray-400">{{ $pit->era_game }}</td>
+                            @php $pSeason = $pitSeasonStats[(int)$pit->player_id] ?? null; @endphp
+                            <td class="text-center px-1.5 py-1.5 text-gray-500">{{ $pSeason ? $pSeason['era'] : '—' }}</td>
                         </tr>
                         @endforeach
                     </tbody>
