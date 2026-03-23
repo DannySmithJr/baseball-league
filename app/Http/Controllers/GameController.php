@@ -3,10 +3,17 @@
 namespace App\Http\Controllers;
 
 use App\Services\OotpService;
+use Illuminate\Support\Facades\Cache;
 
 class GameController extends Controller
 {
     public function show(int $id, OotpService $ootp)
+    {
+        $html = Cache::remember("gamePage.{$id}", 3600, fn () => $this->_gameShow($id, $ootp)->render());
+        return response($html);
+    }
+
+    private function _gameShow(int $id, OotpService $ootp)
     {
         $game = $ootp->game($id);
         if (!$game) abort(404);
@@ -92,6 +99,12 @@ class GameController extends Controller
     }
 
     public function logs(int $id, OotpService $ootp)
+    {
+        $html = Cache::remember("gameLogsPage.{$id}", 3600, fn () => $this->_gameLogs($id, $ootp)->render());
+        return response($html);
+    }
+
+    private function _gameLogs(int $id, OotpService $ootp)
     {
         $game = $ootp->game($id);
         if (!$game) abort(404);
