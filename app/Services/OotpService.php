@@ -2037,7 +2037,7 @@ class OotpService
                 ->join('games as g', 'g.game_id', '=', 'ps.game_id')
                 ->whereIn('ps.player_id', $playerIds)
                 ->where('g.played', 1)
-                ->whereIn('g.game_type', [0, 3, 4])
+                ->where('g.game_type', 0)
                 ->whereRaw('YEAR(g.date) = ?', [$year])
                 ->when($throughDate, fn($q) => $q->where('g.date', '<=', $throughDate))
                 ->select('ps.player_id',
