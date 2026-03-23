@@ -2025,23 +2025,24 @@ class OotpService
     }
 
     /**
-     * Season pitching stats (ERA, W, L, K) for a set of player IDs.
-     * Returns: [player_id => ['era' => '3.45', 'w' => 5, 'l' => 3, ...]]
+     * Season pitching ERA through a specific game date for a set of player IDs.
+     * Sums ER and outs from all game appearances up to and including the given date.
+     * Returns: [player_id => ['era' => '3.45']]
      */
-    public function playerSeasonPitchStats(array $playerIds, int $year): array
+    public function playerSeasonPitchStats(array $playerIds, int $year, string $throughDate = null): array
     {
         if (empty($playerIds)) return [];
         $rows = $this->safeQuery(fn () =>
-            DB::table('players_career_pitching_stats')
-                ->whereIn('player_id', $playerIds)
-                ->where('year', $year)
-                ->where('split_id', 1)
-                ->select('player_id',
-                    DB::raw('SUM(outs) as outs'), DB::raw('SUM(er) as er'),
-                    DB::raw('SUM(w) as w'), DB::raw('SUM(l) as l'),
-                    DB::raw('SUM(k) as k'), DB::raw('SUM(bb) as bb'),
-                    DB::raw('SUM(s) as s'))
-                ->groupBy('player_id')
+            DB::table('players_game_pitching_stats as ps')
+                ->join('games as g', 'g.game_id', '=', 'ps.game_id')
+                ->whereIn('ps.player_id', $playerIds)
+                ->where('g.played', 1)
+                ->whereIn('g.game_type', [0, 3, 4])
+                ->whereRaw('YEAR(g.date) = ?', [$year])
+                ->when($throughDate, fn($q) => $q->where('g.date', '<=', $throughDate))
+                ->select('ps.player_id',
+                    DB::raw('SUM(ps.outs) as outs'), DB::raw('SUM(ps.er) as er'))
+                ->groupBy('ps.player_id')
                 ->get()
         ) ?? collect();
 
@@ -2052,11 +2053,6 @@ class OotpService
             $era  = $ip > 0 ? ((int)$r->er / $ip) * 9 : 0;
             $result[(int)$r->player_id] = [
                 'era' => number_format($era, 2),
-                'w'   => (int)$r->w,
-                'l'   => (int)$r->l,
-                'k'   => (int)$r->k,
-                's'   => (int)$r->s,
-                'ip'  => floor($outs / 3) . '.' . ($outs % 3),
             ];
         }
         return $result;

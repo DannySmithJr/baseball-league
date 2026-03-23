@@ -78,7 +78,7 @@ class GameController extends Controller
                 $pitcherIds[] = (int)$p->player_id;
             }
         }
-        $pitSeasonStats = $ootp->playerSeasonPitchStats(array_unique($pitcherIds), $year);
+        $pitSeasonStats = $ootp->playerSeasonPitchStats(array_unique($pitcherIds), $year, $game->date);
 
         return view('games.show', compact(
             'game', 'lineScore', 'boxBatting', 'boxPitching', 'atBats',
