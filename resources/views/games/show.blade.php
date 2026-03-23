@@ -125,10 +125,13 @@
     }
     // phLetters: player_id → letter (a, b, c...) per team
     // phNotes:   team_id  → array of footnote strings
+    // Covers both pinch hitters AND defensive replacements
     $phLetters = [$awayId => [], $homeId => []];
     $phNotes   = [$awayId => [], $homeId => []];
     $phSeen    = [];
     $phAlpha   = [$awayId => 0, $homeId => 0];
+
+    // First pass: assign letters to pinch hitters from at-bat data
     foreach ($atBats as $half) {
         foreach ($half['atbats'] as $ab) {
             if (!(int)$ab->pinch) continue;
@@ -144,7 +147,6 @@
             }
             $letter   = $phLetters[$tid][$pid];
             $phName   = $fmtIni($ab->batter_first, $ab->batter_last);
-            // Find the player immediately before this PH in the slot's appearance order
             $original = null;
             $prevInSlot = null;
             foreach ($spotPlayers[$tid][$spot] ?? [] as $_b) {
@@ -155,6 +157,37 @@
                 $prevInSlot = $_b;
             }
             $phNotes[$tid][] = $letter . ' - ' . $phName . ($original ? ' pinch hit for ' . $original : ' (PH)') . ' in the ' . $innLabel($inn);
+        }
+    }
+
+    // Second pass: detect defensive replacements — non-starter, non-PH players
+    // who appear after a PH in the same batting slot
+    $defSubPlayers = [$awayId => [], $homeId => []]; // player_id → true
+    foreach ([$awayId, $homeId] as $_tid) {
+        foreach ($spotPlayers[$_tid] as $_slot => $_players) {
+            $sawPH = false;
+            $prevPlayer = null;
+            foreach ($_players as $_idx => $_b) {
+                $_pid = (int)$_b->player_id;
+                if (isset($phLetters[$_tid][$_pid])) {
+                    $sawPH = true;
+                    $prevPlayer = $_b;
+                    continue;
+                }
+                // First player in slot is the starter — skip
+                if ($_idx === 0) { $prevPlayer = $_b; continue; }
+                // Non-PH after a PH (or after another def sub) = defensive replacement
+                if ($sawPH && !isset($phLetters[$_tid][$_pid])) {
+                    $phLetters[$_tid][$_pid] = chr(ord('a') + $phAlpha[$_tid]++);
+                    $defSubPlayers[$_tid][$_pid] = true;
+                    $letter = $phLetters[$_tid][$_pid];
+                    $defName = $fmtIni($_b->first_name, $_b->last_name);
+                    $replacedName = $prevPlayer ? $fmtIni($prevPlayer->first_name, $prevPlayer->last_name) : null;
+                    $defPos = $fieldingPositions[(int)$_b->position] ?? '';
+                    $phNotes[$_tid][] = $letter . ' - ' . $defName . ($replacedName ? ' entered as defensive replacement' . ($defPos ? ' at ' . $defPos : '') . ' for ' . $replacedName : ' (defensive replacement)');
+                }
+                $prevPlayer = $_b;
+            }
         }
     }
 @endphp
@@ -477,7 +510,7 @@
                                 <a href="{{ route('player', $b->player_id) }}" class="text-gray-200 hover:text-red-400 transition font-medium">
                                     {{ mb_substr($b->first_name,0,1) }}. {{ $b->last_name }}
                                 </a>
-                                <span class="text-gray-600 ml-0.5">{{ $phLetter ? 'PH' : $fieldPos }}</span>
+                                <span class="text-gray-600 ml-0.5">{{ $phLetter ? (isset($defSubPlayers[$tid][(int)$b->player_id]) ? $fieldPos : 'PH') : $fieldPos }}</span>
                             </td>
                             <td class="text-center px-1 py-1.5 text-gray-400">{{ $b->ab }}</td>
                             <td class="text-center px-1 py-1.5 text-gray-400">{{ $b->r }}</td>
