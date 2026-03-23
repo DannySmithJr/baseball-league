@@ -206,11 +206,16 @@
                 <p class="text-xs text-gray-500 leading-snug">{{ $decisionLine ?: '&nbsp;' }}</p>
             </div>
 
-            {{-- Box score link --}}
-            <div class="px-4 py-2.5 mt-auto text-center">
+            {{-- Box score / Game log links --}}
+            <div class="px-4 py-2.5 mt-auto text-center flex justify-center gap-4">
                 <a href="{{ route('game', $game->game_id) }}"
                    class="text-sm font-semibold text-red-400 hover:text-red-300 transition">
                     Box Score
+                </a>
+                <span class="text-gray-700">|</span>
+                <a href="{{ route('game.logs', $game->game_id) }}"
+                   class="text-sm font-semibold text-gray-500 hover:text-gray-300 transition">
+                    Game Log
                 </a>
             </div>
 

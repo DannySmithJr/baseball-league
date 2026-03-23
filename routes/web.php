@@ -30,6 +30,7 @@ Route::get('player/{id}/bio',      [PlayerController::class, 'bio'])->name('play
 Route::get('player/{id}/contract',[PlayerController::class, 'contract'])->name('player.contract');
 Route::get('player/{id}/gamelog', [PlayerController::class, 'gamelog'])->name('player.gamelog');
 Route::get('game/{id}', [GameController::class, 'show'])->name('game');
+Route::get('game/{id}/logs', [GameController::class, 'logs'])->name('game.logs');
 Route::get('preview', PreviewController::class)->name('preview');
 
 // Legal pages
