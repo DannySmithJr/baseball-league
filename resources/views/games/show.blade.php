@@ -794,11 +794,22 @@
                         @foreach($pitchers as $pit)
                         @php
                             $decLabel = '';
-                            if ($game->winning_pitcher == $pit->player_id)     $decLabel = 'W';
-                            elseif ($game->losing_pitcher == $pit->player_id)  $decLabel = 'L';
-                            elseif ($game->save_pitcher == $pit->player_id)    $decLabel = 'SV';
-                            elseif ((int)$pit->hld > 0)                        $decLabel = 'H';
-                            elseif ((int)$pit->bs > 0)                         $decLabel = 'BS';
+                            $decRecord = '';
+                            $_pStat = $pitSeasonStats[(int)$pit->player_id] ?? null;
+                            if ($game->winning_pitcher == $pit->player_id) {
+                                $decLabel = 'W';
+                                if ($_pStat) $decRecord = '(' . $_pStat['w'] . '-' . $_pStat['l'] . ')';
+                            } elseif ($game->losing_pitcher == $pit->player_id) {
+                                $decLabel = 'L';
+                                if ($_pStat) $decRecord = '(' . $_pStat['w'] . '-' . $_pStat['l'] . ')';
+                            } elseif ($game->save_pitcher == $pit->player_id) {
+                                $decLabel = 'SV';
+                                if ($_pStat) $decRecord = '(' . $_pStat['s'] . ')';
+                            } elseif ((int)$pit->hld > 0) {
+                                $decLabel = 'H';
+                            } elseif ((int)$pit->bs > 0) {
+                                $decLabel = 'BS';
+                            }
                         @endphp
                         <tr class="hover:bg-gray-800/20">
                             <td class="py-1.5 pr-2">
@@ -810,6 +821,7 @@
                                         {{ $decLabel==='W'?'text-green-400':($decLabel==='L'?'text-red-400':($decLabel==='SV'?'text-blue-400':'text-gray-500')) }}">
                                         {{ $decLabel }}
                                     </span>
+                                    @if($decRecord)<span class="text-gray-500 text-xs ml-0.5">{{ $decRecord }}</span>@endif
                                 @endif
                             </td>
                             <td class="text-center px-1.5 py-1.5 text-gray-200 font-semibold">{{ $pit->ip_display }}</td>

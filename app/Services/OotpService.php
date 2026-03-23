@@ -2041,7 +2041,9 @@ class OotpService
                 ->whereRaw('YEAR(g.date) = ?', [$year])
                 ->when($throughDate, fn($q) => $q->where('g.date', '<=', $throughDate))
                 ->select('ps.player_id',
-                    DB::raw('SUM(ps.outs) as outs'), DB::raw('SUM(ps.er) as er'))
+                    DB::raw('SUM(ps.outs) as outs'), DB::raw('SUM(ps.er) as er'),
+                    DB::raw('SUM(ps.w) as w'), DB::raw('SUM(ps.l) as l'),
+                    DB::raw('SUM(ps.s) as s'))
                 ->groupBy('ps.player_id')
                 ->get()
         ) ?? collect();
@@ -2053,6 +2055,9 @@ class OotpService
             $era  = $ip > 0 ? ((int)$r->er / $ip) * 9 : 0;
             $result[(int)$r->player_id] = [
                 'era' => number_format($era, 2),
+                'w'   => (int)$r->w,
+                'l'   => (int)$r->l,
+                's'   => (int)$r->s,
             ];
         }
         return $result;
