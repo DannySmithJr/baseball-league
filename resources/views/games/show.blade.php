@@ -792,8 +792,6 @@
     </div>
 </div>
 
-@endif
-
 @endif {{-- $played --}}
 
 @endsection
