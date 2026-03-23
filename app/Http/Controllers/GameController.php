@@ -16,6 +16,27 @@ class GameController extends Controller
         $boxPitching = $ootp->gameBoxPitching($id);
         $atBats      = $ootp->gameAtBats($id, (int) $game->away_team, (int) $game->home_team);
 
+        // For All-Star games, remap at-bat team_ids from real teams to All-Star team IDs
+        if (in_array((int)$game->game_type, [3, 4])) {
+            $awayId = (int)$game->away_team;
+            $homeId = (int)$game->home_team;
+            // Map real team sub_league to All-Star side
+            $teamSubLeague = [];
+            foreach ($ootp->teams() as $t) {
+                $teamSubLeague[(int)$t->team_id] = (int)$t->sub_league_id;
+            }
+            $awaySub = $teamSubLeague[$awayId] ?? 0;
+            $homeSub = $teamSubLeague[$homeId] ?? 1;
+            foreach ($atBats as &$half) {
+                foreach ($half['atbats'] as $ab) {
+                    $realSub = $teamSubLeague[(int)$ab->team_id] ?? null;
+                    if ($realSub === $awaySub) $ab->team_id = $awayId;
+                    elseif ($realSub === $homeSub) $ab->team_id = $homeId;
+                }
+            }
+            unset($half);
+        }
+
         // Team logos (era-accurate)
         $year       = (int) substr($game->date, 0, 4);
         $seasonYear = $ootp->seasonYear() ?? $year;
